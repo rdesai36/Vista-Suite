@@ -24,21 +24,6 @@ from database import db_manager
 from styles import load_theme_settings, apply_theme, apply_mobile_styles, render_mobile_nav
 from auth import authenticate
 
-if "user" not in st.session_state:
-    st.title("Vista Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Login"):
-        user = authenticate(username, password)
-        if user:
-            st.session_state.user = user
-            st.rerun()
-        else:
-            st.error("Invalid login credentials")
-    st.stop()
-
-current_user = st.session_state.user
-
 # Page configuration
 st.set_page_config(
     page_title="VISTA",
@@ -46,6 +31,88 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# === Auth Gate ===
+if "user" not in st.session_state:
+    if "page" not in st.session_state:
+        st.session_state.page = "login"
+
+    if st.session_state.page == "login":
+        st.title("Vista Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Login"):
+                user = authenticate(username, password)
+                if user:
+                    st.session_state.user = user
+                    st.rerun()
+                else:
+                    st.error("Invalid login credentials")
+
+        with col2:
+            if st.button("Sign Up"):
+                st.session_state.page = "signup"
+                st.rerun()
+
+        st.stop()
+
+    elif st.session_state.page == "signup":
+        st.title("Vista Signup")
+        name = st.text_input("Full Name")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        property_code = st.text_input("Property Code")
+        invite_code = st.text_input("Invite Code")
+
+        if st.button("Create Account"):
+            from models_db import User, Property, InviteCode
+            from database import db_manager
+            from auth import hash_password
+
+            prop = db_manager.db.query(Property).filter_by(code=property_code.upper()).first()
+            invite = db_manager.db.query(InviteCode).filter_by(code=invite_code.upper()).first()
+
+            if not prop:
+                st.error("Invalid property code.")
+            elif not invite or not invite.code.startswith(prop.company):
+                st.error("Invalid or mismatched invite code.")
+            else:
+                role_map = {
+                    "E": "Executive",
+                    "F": "Frontline",
+                    "M": "Manager",
+                    "A": "Accounting"
+                }
+                role_letter = invite.code.split("-")[-1].upper()
+                role = role_map.get(role_letter)
+
+                if not role:
+                    st.error("Invalid role in invite code.")
+                else:
+                    if db_manager.db.query(User).filter_by(username=username).first():
+                        st.error("Username already exists.")
+                    else:
+                        user = User(
+                            username=username,
+                            name=name,
+                            hashed_password=hash_password(password),
+                            role=role
+                        )
+                        db_manager.db.add(user)
+                        db_manager.db.commit()
+                        st.success("Account created successfully. Please login.")
+                        st.session_state.page = "login"
+                        st.rerun()
+
+        if st.button("Back to Login"):
+            st.session_state.page = "login"
+            st.rerun()
+
+        # ✅ Stop here so dashboard doesn't render under signup
+        st.stop()
 
 # Initialize theme settings
 load_theme_settings()
@@ -151,6 +218,10 @@ with st.sidebar:
     if st.button("💬 Messages", use_container_width=True,
                  type="primary" if st.session_state.page == "messaging" else "secondary"):
         st.session_state.page = "messaging"
+        st.rerun()
+
+    if st.button("Logout"):
+        st.session_state.clear()
         st.rerun()
     
     st.markdown("---")

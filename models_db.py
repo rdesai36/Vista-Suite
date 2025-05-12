@@ -10,6 +10,20 @@ class User(Base):
     name = Column(String)
     role = Column(String)  # e.g., Admin, Manager, FrontDesk
 
+class Property(Base):
+    __tablename__ = 'properties'
+    id = Column(Integer, primary_key=True)
+    code = Column(String, unique=True, nullable=False)  # e.g. BOKOH, CLELW
+    name = Column(String)
+    company = Column(String)  # e.g. Spark Hotels
+
+class InviteCode(Base):
+    __tablename__ = 'invite_codes'
+    id = Column(Integer, primary_key=True)
+    code = Column(String, unique=True, nullable=False)  # e.g. SPARK-E
+    role = Column(String)  # E, F, M, A
+    company = Column(String)  # for validation (e.g., SPARK)
+
 class OccupancyData(Base):
     __tablename__ = "occupancy_data"
     id = Column(Integer, primary_key=True)
