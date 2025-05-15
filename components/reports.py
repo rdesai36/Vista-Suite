@@ -13,6 +13,10 @@ def show_reports(start_date, end_date):
     
     # Load data
     hotel_data.load_data(start_date, end_date)
+
+    if hotel_data is None:
+        st.warning("No data available.")
+        return
     
     # Sidebar for report type selection
     report_type = st.selectbox(
@@ -46,7 +50,7 @@ def show_occupancy_report(start_date, end_date):
     # Get occupancy data
     occupancy_data = hotel_data.get_occupancy_data(start_date, end_date)
     
-    if occupancy_data.empty:
+    if occupancy_data is None:
         st.warning("No occupancy data available for the selected period.")
         return
     

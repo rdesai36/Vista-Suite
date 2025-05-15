@@ -86,11 +86,11 @@ def show_recent_logs(current_user):
         
         # Apply read/unread filter
         if not show_read:
-            filtered_logs = [log for log in filtered_logs if current_user.user_id not in log.read_by]
+            filtered_logs = [log for log in filtered_logs if current_user.id not in log.read_by]
         
         # Render each log
         for log in filtered_logs:
-            is_read = current_user.user_id in log.read_by
+            is_read = current_user.id in log.read_by
             
             with st.expander(
                 f"{log.title} - {format_timestamp(log.timestamp, '%b %d, %I:%M %p')}",
@@ -109,7 +109,7 @@ def show_recent_logs(current_user):
                 # Mark as read button (if not already read)
                 if not is_read:
                     if st.button("Mark as Read", key=f"mark_read_{log.log_id}"):
-                        data_manager.mark_log_as_read(log.log_id, current_user.user_id)
+                        data_manager.mark_log_as_read(log.log_id, current_user.id)
                         st.success("Marked as read")
                         st.rerun()
     else:
@@ -135,7 +135,7 @@ def create_new_log(current_user):
                     log_id=log_id,
                     title=title,
                     message=message,
-                    author_id=current_user.user_id,
+                    author_id=current_user.id,
                     author_name=current_user.name,
                     author_role=current_user.role
                 )

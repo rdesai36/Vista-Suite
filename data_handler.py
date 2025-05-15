@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import sqlalchemy as sa
 from models_db import OccupancyData, RevenueData, Room, Guest, Booking
+from database import db_manager
 
 class HotelDataHandler:
     """Class for handling hotel data operations"""
@@ -14,7 +15,7 @@ class HotelDataHandler:
         self.revenue_data = None
         self.booking_data = None
         self.room_data = None
-        self.guest_data = None
+        self.guest_data = None 
     
     def _check_data_loaded(self):
         """Check if data is loaded and show appropriate error if not"""

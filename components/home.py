@@ -68,7 +68,7 @@ def show_home(current_user=None):
     
     with col3:
         # Count rooms by status if data is available
-        if not room_data.empty and 'status' in room_data.columns:
+        if not room_data is None and 'status' in room_data.columns:
             vacant_count = len(room_data[room_data['status'] == 'Vacant'])
             total_rooms = len(room_data)
             vacancy_pct = (vacant_count / total_rooms * 100) if total_rooms > 0 else 0
@@ -83,7 +83,7 @@ def show_home(current_user=None):
     
     with col4:
         # Count unread logs for current user
-        unread_count = sum(1 for log in recent_logs if current_user.user_id not in log.read_by)
+        unread_count = sum(1 for log in recent_logs if current_user.id not in log.read_by)
         
         st.metric(
             label="New Notifications",
@@ -96,7 +96,7 @@ def show_home(current_user=None):
         
         if recent_logs:
             for log in recent_logs:
-                is_read = current_user.user_id in log.read_by
+                is_read = current_user.id in log.read_by
                 
                 # Create a card for each log entry
                 log_html = f"""
@@ -118,7 +118,7 @@ def show_home(current_user=None):
                 
                 if not is_read:
                     if st.button("Mark as Read", key=f"read_{log.log_id}"):
-                        data_manager.mark_log_as_read(log.log_id, current_user.user_id)
+                        data_manager.mark_log_as_read(log.log_id, current_user.id)
                         st.rerun()
         else:
             st.info("No recent activity logs.")
@@ -179,12 +179,12 @@ def show_home(current_user=None):
     
     elif current_user.role == "Housekeeping":
         st.subheader("Housekeeping Status")
-        
+                                                                                               
         # Display rooms that need cleaning if data is available
-        if not room_data.empty and 'status' in room_data.columns:
+        if not room_data is None and 'status' in room_data.columns:
             dirty_rooms = room_data[room_data['status'] == 'Dirty']
             
-            if not dirty_rooms.empty:
+            if not dirty_rooms is None:
                 st.markdown("### Rooms Pending Cleaning")
                 st.dataframe(dirty_rooms, hide_index=True)
             else:

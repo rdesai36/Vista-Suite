@@ -16,10 +16,14 @@ def show_occupancy(start_date, end_date):
     hotel_data.load_data(start_date, end_date)
     occupancy_data = hotel_data.get_occupancy_data(start_date, end_date)
     
-    if occupancy_data.empty:
-        st.warning("No occupancy data available for the selected period.")
-        return
+    # if occupancy_data.empty:
+    #     st.warning("No occupancy data available for the selected period.")
+    #     return
     
+    if occupancy_data is None:
+        st.warning("No data available.")
+        return
+
     # Calculate overall average occupancy for the period
     avg_occupancy = occupancy_data['occupancy_rate'].mean() if 'occupancy_rate' in occupancy_data.columns else 0
     

@@ -4,7 +4,8 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from dotenv import load_dotenv
 
 from models_base import Base  # or wherever your Base is
-from models_db import User, OccupancyData, RevenueData, Room, Guest, Booking
+from models_db import User, OccupancyData, RevenueData, Room, Guest, Booking, Log, MessageThread
+from datetime import datetime
 
 class DatabaseManager:
     def __init__(self):
@@ -16,29 +17,51 @@ class DatabaseManager:
         self.session_factory = sessionmaker(bind=self.engine)
         self.db = scoped_session(self.session_factory)
 
-        def update_room_status(self, room_id, new_status):
-            room = self.db.query(Room).get(room_id)
-            if room:
-                room.room_status = new_status
-                self.db.commit()
-                return True
-            return False
+    def get_session(self):
+        return self.db()
+        
+    def get_all_users(self):
+        return self.db.query(User).all()
 
-        def check_in_booking(self, booking_id):
-            booking = self.db.query(Booking).get(booking_id)
-            if booking and booking.booking_status == "Reserved":
-                booking.booking_status = "Checked-In"
-                self.db.commit()
-                return True
-            return False
+    def get_recent_logs(self, limit=10):
+        return self.db.query(Log).order_by(Log.timestamp.desc()).limit(limit).all()
 
-        def check_out_booking(self, booking_id):
-            booking = self.db.query(Booking).get(booking_id)
-            if booking and booking.booking_status == "Checked-In":
-                booking.booking_status = "Checked-Out"
-                self.db.commit()
-                return True
-            return False
+    def get_user_threads(self, user_id):
+        return self.db.query(MessageThread).filter_by(participant_id=user_id).all()
+
+    def update_room_status(self, room_id, new_status):
+        room = self.db.query(Room).get(room_id)
+        if room:
+            room.room_status = new_status
+            self.db.commit()
+            return True
+        return False
+
+    def check_in_booking(self, booking_id):
+        booking = self.db.query(Booking).get(booking_id)
+        if booking and booking.booking_status == "Reserved":
+            booking.booking_status = "Checked-In"
+            self.db.commit()
+            return True
+        return False
+
+    def check_out_booking(self, booking_id):
+        booking = self.db.query(Booking).get(booking_id)
+        if booking and booking.booking_status == "Checked-In":
+            booking.booking_status = "Checked-Out"
+            self.db.commit()
+            return True
+        return False
+
+    def get_user_by_id(self, user_id):
+        return self.db.query(User).filter_by(id=user_id).first()
+
+    def update_user_last_active(self, user_id):
+        user = self.db.query(User).filter_by(id=user_id).first()
+        if user:
+            user.last_active = datetime.utcnow()
+            self.db.commit()
+
 
     def get_session(self):
         return self.db()

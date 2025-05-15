@@ -26,8 +26,8 @@ from auth import authenticate
 
 # Page configuration
 st.set_page_config(
-    page_title="VISTA",
-    page_icon="🏨",
+    page_title="Vista Suite",
+    page_icon="logobg.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -113,13 +113,6 @@ if "user" not in st.session_state:
 
         # ✅ Stop here so dashboard doesn't render under signup
         st.stop()
-
-# Initialize theme settings
-load_theme_settings()
-
-# Apply theme and mobile styles
-apply_theme()
-apply_mobile_styles()
 
 # Initialize session state for navigation and settings
 if 'page' not in st.session_state:
@@ -335,6 +328,9 @@ else:
 
     if "selected_property" not in st.session_state:
         st.session_state.selected_property = user_properties[0]
+
+# This is just for now — should be fetched from user-property relationships later
+user_properties = ["BOKOH", "CLELW", "CLEMF"]
 
 selected_property = st.selectbox("Select Property", user_properties)
 st.session_state.selected_property = selected_property

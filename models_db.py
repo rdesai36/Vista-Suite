@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from models_base import Base
+from datetime import datetime
 
 class User(Base):
     __tablename__ = 'users'
@@ -9,6 +10,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     name = Column(String)
     role = Column(String)  # e.g., Admin, Manager, FrontDesk
+    last_active = Column(DateTime, default=datetime.utcnow)
+    avatar = Column(String)
+    bio = Column(Text)
+    email = Column(String)
+    phone = Column(String)
 
 class Property(Base):
     __tablename__ = 'properties'
@@ -23,6 +29,13 @@ class InviteCode(Base):
     code = Column(String, unique=True, nullable=False)  # e.g. SPARK-E
     role = Column(String)  # E, F, M, A
     company = Column(String)  # for validation (e.g., SPARK)
+
+class MessageThread(Base):
+    __tablename__ = "message_threads"
+    id = Column(Integer, primary_key=True)
+    participant_id = Column(Integer, nullable=False)
+    subject = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 class OccupancyData(Base):
     __tablename__ = "occupancy_data"
@@ -67,3 +80,10 @@ class Booking(Base):
 
     guest = relationship("Guest")
     room = relationship("Room")
+
+class Log(Base):
+    __tablename__ = "logs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    message = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)

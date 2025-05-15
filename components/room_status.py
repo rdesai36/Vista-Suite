@@ -12,6 +12,10 @@ def show_room_status():
     # Load data
     hotel_data.load_data()
     room_data = hotel_data.get_room_status_data()
+
+    if room_data is None or room_data.empty:
+        st.warning("No data available.")
+        return
     
     # Top summary metrics
     st.subheader("Room Status Summary")

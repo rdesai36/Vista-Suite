@@ -163,7 +163,7 @@ def show_room_availability():
         room_data = hotel_data.get_room_status_data()
         
         # In a real app, this would filter for available rooms between these dates
-        if not room_data.empty:
+        if not room_data is None:
             # Simulate filtering available rooms (in a real app this would check actual availability)
             available_rooms = room_data[room_data['status'] == 'Vacant'] if 'status' in room_data.columns else pd.DataFrame()
             

@@ -59,9 +59,9 @@ class UserProfile:
         """Create user profile from database model"""
         if not db_user:
             return None
-        
+
         return cls(
-            user_id=db_user.user_id,
+            user_id=db_user.id,
             name=db_user.name,
             role=db_user.role,
             email=db_user.email,
@@ -70,6 +70,7 @@ class UserProfile:
             avatar=db_user.avatar,
             last_active=db_user.last_active
         )
+
 
 
 class LogEntry:

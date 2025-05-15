@@ -16,8 +16,12 @@ def show_revenue(start_date, end_date):
     hotel_data.load_data(start_date, end_date)
     revenue_data = hotel_data.get_revenue_data(start_date, end_date)
     
-    if revenue_data.empty:
+    if revenue_data is None:
         st.warning("No revenue data available for the selected period.")
+        return
+
+    if revenue_data is None:
+        st.warning("No data available.")
         return
     
     # Calculate key revenue metrics (if data is available)

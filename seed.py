@@ -2,6 +2,7 @@ from models_db import User
 from database import db_manager
 from auth import hash_password
 from models_db import Property, InviteCode
+from datetime import datetime
 
 def seed_users():
     if not db_manager.db.query(User).filter_by(username="rdesai").first():
@@ -18,9 +19,9 @@ if __name__ == "__main__":
     seed_users()
 
     props = [
-    ("BOKOH", "Holiday Inn Canton", "SPARK"),
-    ("CLELW", "Holiday Inn Express Westlake", "SPARK"),
-    ("CLEMF", "Holiday Inn Mayfield", "SPARK")
+    ("BOKOH", "Holiday Inn Brookpark - Cleveland Airport", "SPARK"),
+    ("CLELW", "Holiday Inn Express & Suites - Westlake", "SPARK"),
+    ("CLEMF", "Holiday Inn - Mayfield", "SPARK")
 ]
 
 invites = [
