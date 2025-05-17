@@ -11,9 +11,9 @@ def show_profile(current_user=None, user_id=None):
         return
 
     # Determine which profile to show
-    if user_id and user_id != current_user.id:
+    if user_id and user_id != current_user.user_id:
         # Viewing someone else's profile
-        profile_user = data_manager.get_user(user.id)
+        profile_user = data_manager.get_user(user_id)
         if not profile_user:
             st.error(f"User profile not found.")
             return
@@ -88,14 +88,14 @@ def show_editable_profile(user):
     st.header("My Messages")
 
     # Get messages for current user
-    messages = data_manager.get_messages(user.id)
+    messages = data_manager.get_messages(user.user_id)
 
     if messages:
         messages = sorted(messages, key=lambda msg: msg.timestamp, reverse=True)
 
         for message in messages[:5]:  # Show only most recent 5 messages
             # Determine if sent or received
-            if message.sender_id == user.id:
+            if message.sender_id == user.user_id:
                 other_user = data_manager.get_user(message.recipient_id)
                 is_sent = True
             else:

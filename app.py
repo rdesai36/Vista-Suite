@@ -326,11 +326,11 @@ else:
     # Default to home if page not found
     show_home(current_user)
 
-    if "selected_property" not in st.session_state:
-        st.session_state.selected_property = user_properties[0]
-
 # This is just for now — should be fetched from user-property relationships later
 user_properties = ["BOKOH", "CLELW", "CLEMF"]
+
+if "selected_property" not in st.session_state:
+    st.session_state.selected_property = user_properties[0]
 
 selected_property = st.selectbox("Select Property", user_properties)
 st.session_state.selected_property = selected_property

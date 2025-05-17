@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from models_base import Base
 from datetime import datetime
@@ -84,6 +84,36 @@ class Booking(Base):
 class Log(Base):
     __tablename__ = "logs"
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer)
+    log_id = Column(String, unique=True)  # Added this for compatibility with LogEntry model
+    title = Column(String)  # Added this for compatibility with LogEntry model
+    user_id = Column(Integer, ForeignKey('users.id'))  # Changed to ForeignKey
     message = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Add relationship to User
+    author = relationship("User", foreign_keys=[user_id])
+    read_by = relationship("LogRead", back_populates="log")
+
+class LogRead(Base):
+    __tablename__ = "log_reads"
+    id = Column(Integer, primary_key=True)
+    log_id = Column(Integer, ForeignKey('logs.id'))
+    user_id = Column(Integer, ForeignKey('users.id'))
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    log = relationship("Log", back_populates="read_by")
+    user = relationship("User")
+
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True)
+    message_id = Column(String, unique=True)
+    sender_id = Column(Integer, ForeignKey('users.id'))
+    recipient_id = Column(Integer, ForeignKey('users.id'))
+    content = Column(Text)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    is_read = Column(Boolean, default=False)
+    
+    # Define relationships
+    sender = relationship("User", foreign_keys=[sender_id])
+    recipient = relationship("User", foreign_keys=[recipient_id])

@@ -1,220 +1,46 @@
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
-import sqlalchemy as sa
-from models_db import OccupancyData, RevenueData, Room, Guest, Booking
 from database import db_manager
+import streamlit as st
 
-class HotelDataHandler:
-    """Class for handling hotel data operations"""
-    
+class DataHandler:
     def __init__(self):
-        """Initialize data storage"""
-        # References to cached data
         self.occupancy_data = None
         self.revenue_data = None
         self.booking_data = None
         self.room_data = None
-        self.guest_data = None 
+        self.guest_data = None
     
     def _check_data_loaded(self):
-        """Check if data is loaded and show appropriate error if not"""
-        if (self.occupancy_data is None or self.revenue_data is None or 
-            self.booking_data is None or self.room_data is None or 
-            self.guest_data is None):
-            return False
-        return True
+        """Check if data is loaded"""
+        return (self.occupancy_data is not None and 
+                self.revenue_data is not None and 
+                self.booking_data is not None and 
+                self.room_data is not None and 
+                self.guest_data is not None)
     
     def load_data(self, start_date=None, end_date=None):
         """
-        Load data from database.
+        Load data from Supabase database.
         """
         try:
-            # Make sure we have a clean database session
-            if hasattr(db_manager, 'db') and db_manager.db is not None:
-                try:
-                    # Try to check the connection with a simple query
-                    db_manager.db.execute(sa.sql.text("SELECT 1"))
-                except Exception as e:
-                    # If there's an error, try to rollback and reconnect
-                    try:
-                        db_manager.db.rollback()
-                    except:
-                        pass
-                    
-                    try:
-                        db_manager.db.close()
-                    except:
-                        pass
-                    
-                    from database import SessionLocal
-                    if SessionLocal:
-                        db_manager.db = SessionLocal()
-            
-            # Convert database models to DataFrames
-            
             # Get rooms from database
             rooms = db_manager.get_all_rooms()
             if rooms:
-                room_data = []
-                for room in rooms:
-                    room_data.append({
-                        'room_id': room.id,
-                        'room_number': room.room_number,
-                        'room_type': room.room_type,
-                        'status': room.status,
-                        'last_cleaned': room.last_cleaned,
-                        'maintenance_due': room.maintenance_due
-                    })
-                self.room_data = pd.DataFrame(room_data)
+                self.room_data = pd.DataFrame(rooms)
             else:
-                self.room_data = pd.DataFrame(columns=['room_id', 'room_number', 'room_type', 'status', 'last_cleaned', 'maintenance_due'])
+                self.room_data = pd.DataFrame(columns=['id', 'room_number', 'room_type', 'status', 'last_cleaned', 'maintenance_due'])
             
             # Query occupancy data from database
             if start_date and end_date:
-                # Convert to datetime if they're date objects
+                # Convert to ISO format strings if they're date objects
                 if isinstance(start_date, datetime.date) and not isinstance(start_date, datetime):
-                    start_date = datetime.combine(start_date, datetime.min.time())
+                    start_date = datetime.combine(start_date, datetime.min.time()).isoformat()
                 if isinstance(end_date, datetime.date) and not isinstance(end_date, datetime):
-                    end_date = datetime.combine(end_date, datetime.min.time())
-                
-                # Query occupancy data for date range
-                occupancy_data = db_manager.db.query(OccupancyData).filter(
-                    OccupancyData.date >= start_date,
-                    OccupancyData.date <= end_date
-                ).all()
-                
-                if occupancy_data:
-                    occ_data = []
-                    for occ in occupancy_data:
-                        occ_data.append({
-                            'date': occ.date,
-                            'rooms_occupied': occ.rooms_occupied,
-                            'total_rooms': occ.total_rooms,
-                            'occupancy_rate': occ.occupancy_rate
-                        })
-                    self.occupancy_data = pd.DataFrame(occ_data)
-                else:
-                    self.occupancy_data = pd.DataFrame(columns=['date', 'rooms_occupied', 'total_rooms', 'occupancy_rate'])
-                
-                # Query revenue data for date range
-                revenue_data = db_manager.db.query(RevenueData).filter(
-                    RevenueData.date >= start_date,
-                    RevenueData.date <= end_date
-                ).all()
-                
-                if revenue_data:
-                    rev_data = []
-                    for rev in revenue_data:
-                        rev_data.append({
-                            'date': rev.date,
-                            'room_revenue': rev.room_revenue,
-                            'f&b_revenue': rev.fb_revenue,
-                            'other_revenue': rev.other_revenue,
-                            'total_revenue': rev.total_revenue
-                        })
-                    self.revenue_data = pd.DataFrame(rev_data)
-                else:
-                    self.revenue_data = pd.DataFrame(columns=['date', 'room_revenue', 'f&b_revenue', 'other_revenue', 'total_revenue'])
-                
-                # Query bookings for date range
-                bookings = db_manager.db.query(Booking).filter(
-                    sa.or_(
-                        sa.and_(
-                            Booking.check_in_date >= start_date,
-                            Booking.check_in_date <= end_date
-                        ),
-                        sa.and_(
-                            Booking.check_out_date >= start_date,
-                            Booking.check_out_date <= end_date
-                        ),
-                        sa.and_(
-                            Booking.check_in_date <= start_date,
-                            Booking.check_out_date >= end_date
-                        )
-                    )
-                ).all()
-                
-                if bookings:
-                    booking_data = []
-                    for booking in bookings:
-                        guest_name = booking.guest.name if booking.guest else "Unknown"
-                        room_type = booking.room.room_type if booking.room else "Unknown"
-                        room_number = booking.room.room_number if booking.room else "Unknown"
-                        
-                        booking_data.append({
-                            'booking_id': booking.booking_id,
-                            'guest_name': guest_name,
-                            'check_in_date': booking.check_in_date,
-                            'check_out_date': booking.check_out_date,
-                            'room_type': room_type,
-                            'room_number': room_number,
-                            'booking_status': booking.booking_status,
-                            'payment_status': booking.payment_status,
-                            'total_amount': booking.total_amount
-                        })
-                    self.booking_data = pd.DataFrame(booking_data)
-                else:
-                    self.booking_data = pd.DataFrame(columns=['booking_id', 'guest_name', 'check_in_date', 'check_out_date', 'room_type', 'room_number', 'booking_status', 'payment_status', 'total_amount'])
-            else:
-                # Initialize empty DataFrames if no date range provided
-                self.occupancy_data = pd.DataFrame(columns=['date', 'rooms_occupied', 'total_rooms', 'occupancy_rate'])
-                self.revenue_data = pd.DataFrame(columns=['date', 'room_revenue', 'f&b_revenue', 'other_revenue', 'total_revenue'])
-                self.booking_data = pd.DataFrame(columns=['booking_id', 'guest_name', 'check_in_date', 'check_out_date', 'room_type', 'room_number', 'booking_status', 'payment_status', 'total_amount'])
-            
-            # Get all guests
-            guests = db_manager.db.query(Guest).all()
-            if guests:
-                guest_data = []
-                for guest in guests:
-                    # Check if guest has a current stay
-                    current_stay = None
-                    current_booking = db_manager.db.query(Booking).filter(
-                        Booking.guest_id == guest.id,
-                        Booking.check_in_date <= datetime.now(),
-                        Booking.check_out_date >= datetime.now(),
-                        Booking.booking_status == "Confirmed"
-                    ).first()
-                    
-                    if current_booking:
-                        room_number = current_booking.room.room_number if current_booking.room else "Unknown"
-                        current_stay = {
-                            'room': room_number,
-                            'check_in': current_booking.check_in_date,
-                            'check_out': current_booking.check_out_date
-                        }
-                    
-                    guest_data.append({
-                        'guest_id': guest.guest_id,
-                        'guest_name': guest.name,
-                        'phone': guest.phone,
-                        'email': guest.email,
-                        'address': guest.address,
-                        'loyalty_level': guest.loyalty_level,
-                        'current_stay': current_stay
-                    })
-                self.guest_data = pd.DataFrame(guest_data)
-            else:
-                self.guest_data = pd.DataFrame(columns=['guest_id', 'guest_name', 'phone', 'email', 'address', 'loyalty_level', 'current_stay'])
-            
-            return True
+                    end_date = datetime.combine(end_date, datetime.min.time()).isoformat()
+            return False
         except Exception as e:
-            # In a real application, you'd want to log this error
             print(f"Error loading data: {str(e)}")
-            
-            # Make sure to rollback any failed transaction
-            if hasattr(db_manager, 'db') and db_manager.db is not None:
-                try:
-                    db_manager.db.rollback()
-                except:
-                    pass
-                
-                # Try to reset the session after error
-                try:
-                    db_manager.reconnect()
-                except:
-                    pass
-            
             return False
     
     def get_kpi_summary(self, start_date, end_date):
@@ -409,4 +235,4 @@ class HotelDataHandler:
             return pd.DataFrame(columns=['guest_id', 'guest_name', 'phone', 'email', 'address', 'loyalty_level', 'current_stay'])
 
 # Create a singleton instance to be used across the app
-hotel_data = HotelDataHandler()
+hotel_data = DataHandler()
