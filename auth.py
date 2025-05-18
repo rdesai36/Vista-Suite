@@ -1,8 +1,6 @@
 import bcrypt
-from database import db_manager
-from models_db import User
 import streamlit as st
-from supabase_client import get_supabase_client, get_admin_client
+from supabase_client import get_supabase_client, get_admin_client, supabase
 import time
 from datetime import datetime, timedelta
 
@@ -14,10 +12,17 @@ def verify_password(password: str, hashed: str) -> bool:
 
 # Authenticate user
 def authenticate(username, password):
-    user = db_manager.db.query(User).filter_by(username=username).first()
-    if user and verify_password(password, user.hashed_password):
-        return user
-    return None
+    try:
+        response = supabase.from_('users').select('*').eq('username', username).execute()
+        user_data = response.data[0] if response.data else None
+
+        if user_data and verify_password(password, user_data['hashed_password']):
+            # Return user data as a dictionary or object if needed elsewhere
+            return user_data
+        return None
+    except Exception as e:
+        st.error(f"Authentication error: {str(e)}")
+        return None
 
 def sign_up(email, password, user_data=None):
     """

@@ -1,28 +1,20 @@
 import streamlit as st
-from datetime import datetime, timedelta
-import os
-
-# Import components
 from components.dashboard import show_dashboard
-from components.occupancy import show_occupancy
-from components.revenue import show_revenue
-from components.front_office import show_front_office
-from components.room_status import show_room_status
 from components.reports import show_reports
-
-# Import new components for user system
+from datetime import datetime, timedelta
+from styles import load_theme_settings, apply_theme, apply_mobile_styles, render_mobile_nav
 from components.home import show_home
-from components.logs import show_logs
+from components.front_office import show_front_office
+from components.occupancy import show_occupancy
+from data_handler import hotel_data
+from components.settings import show_settings
 from components.messaging import show_messaging
+from components.logs import show_logs
+from components.revenue import show_revenue
+from components.room_status import show_room_status
 from components.profile import show_profile
 from components.team import show_team
-from components.settings import show_settings
-
-# Import models and styling
-from models import data_manager
-from database import db_manager
-from styles import load_theme_settings, apply_theme, apply_mobile_styles, render_mobile_nav
-from auth import authenticate
+from supabase_client import get_supabase_client
 
 # Page configuration
 st.set_page_config(
@@ -32,87 +24,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Apply custom theme and styles
+load_theme_settings()
+apply_theme()
+apply_mobile_styles()
+
 # === Auth Gate ===
 if "user" not in st.session_state:
-    if "page" not in st.session_state:
-        st.session_state.page = "login"
-
-    if st.session_state.page == "login":
-        st.title("Vista Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Login"):
-                user = authenticate(username, password)
-                if user:
-                    st.session_state.user = user
-                    st.rerun()
-                else:
-                    st.error("Invalid login credentials")
-
-        with col2:
-            if st.button("Sign Up"):
-                st.session_state.page = "signup"
-                st.rerun()
-
-        st.stop()
-
-    elif st.session_state.page == "signup":
-        st.title("Vista Signup")
-        name = st.text_input("Full Name")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        property_code = st.text_input("Property Code")
-        invite_code = st.text_input("Invite Code")
-
-        if st.button("Create Account"):
-            from models_db import User, Property, InviteCode
-            from database import db_manager
-            from auth import hash_password
-
-            prop = db_manager.db.query(Property).filter_by(code=property_code.upper()).first()
-            invite = db_manager.db.query(InviteCode).filter_by(code=invite_code.upper()).first()
-
-            if not prop:
-                st.error("Invalid property code.")
-            elif not invite or not invite.code.startswith(prop.company):
-                st.error("Invalid or mismatched invite code.")
-            else:
-                role_map = {
-                    "E": "Executive",
-                    "F": "Frontline",
-                    "M": "Manager",
-                    "A": "Accounting"
-                }
-                role_letter = invite.code.split("-")[-1].upper()
-                role = role_map.get(role_letter)
-
-                if not role:
-                    st.error("Invalid role in invite code.")
-                else:
-                    if db_manager.db.query(User).filter_by(username=username).first():
-                        st.error("Username already exists.")
-                    else:
-                        user = User(
-                            username=username,
-                            name=name,
-                            hashed_password=hash_password(password),
-                            role=role
-                        )
-                        db_manager.db.add(user)
-                        db_manager.db.commit()
-                        st.success("Account created successfully. Please login.")
-                        st.session_state.page = "login"
-                        st.rerun()
-
-        if st.button("Back to Login"):
-            st.session_state.page = "login"
-            st.rerun()
-
-        # ✅ Stop here so dashboard doesn't render under signup
-        st.stop()
+    # Authentication logic here
+    # For now, we'll assume the user is authenticated
+    pass
 
 # Initialize session state for navigation and settings
 if 'page' not in st.session_state:
@@ -123,45 +44,53 @@ if 'start_date' not in st.session_state:
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.now().date()
 
-# Initialize or get database manager from session state
-if 'db_manager' not in st.session_state:
-    st.session_state.db_manager = db_manager
-
 # Initialize or get current user from session state
 if 'current_user_id' not in st.session_state:
-    # For demo purposes, use the first user or a default
-    try:
-        users = data_manager.users if hasattr(data_manager, 'users') else []
-        if users:
-            st.session_state.current_user_id = users[0].user_id
-        else:
-            st.session_state.current_user_id = "user1"  # Default fallback
-    except Exception as e:
-        st.error(f"Error loading users: {str(e)}")
-        st.session_state.current_user_id = "user1"  # Default fallback
+    # For demo purposes, set a default user ID
+    st.session_state.current_user_id = "rdesai"
 
-# Get current user profile
 try:
-    current_user = data_manager.get_user(st.session_state.current_user_id)
+    # Get user directly from Supabase
+    supabase = get_supabase_client()
+    user_response = supabase.from_('profiles').select('*').eq('id', st.session_state.current_user_id).execute()
+    user_data = user_response.data[0] if user_response.data else None
+    
+    if user_data:
+        from models import UserProfile
+        current_user = UserProfile(
+            user_id=user_data.get('id'),
+            name=user_data.get('name'),
+            role=user_data.get('role'),
+            email=user_data.get('email'),
+            avatar=user_data.get('avatar')
+        )
+    else:
+        # Create a default user if none exists (for demonstration)
+        from models import UserProfile
+        current_user = UserProfile(
+            user_id="rdesai",
+            name="Rishikesh Desai",
+            role="Developer",
+            email="rrd0363@gmail.com",
+            avatar="https://ui-avatars.com/api/?name=Rishikesh+Desai&background=0D8ABC&color=fff"
+        )
 except Exception as e:
     st.error(f"Error getting user: {str(e)}")
-    current_user = None
-
-# Create a default user if none exists (for demonstration)
-if current_user is None:
+    # Create a default user if there's an error
     from models import UserProfile
     current_user = UserProfile(
-    user_id="rdesai",
-    name="Rishikesh Desai",
-    role="Developer",
-    email="rrd0363@gmail.com",
-    avatar="https://ui-avatars.com/api/?name=Rishikesh+Desai&background=0D8ABC&color=fff"
+        user_id="rdesai",
+        name="Rishikesh Desai",
+        role="Developer",
+        email="rrd0363@gmail.com",
+        avatar="https://ui-avatars.com/api/?name=Rishikesh+Desai&background=0D8ABC&color=fff"
     )
 
 # Update user's last active timestamp
 if current_user and hasattr(current_user, 'user_id'):
     try:
-        db_manager.update_user_last_active(current_user.user_id)
+        # Update directly in Supabase
+        supabase.from_('profiles').update({'last_active': datetime.now().isoformat()}).eq('id', current_user.user_id).execute()
     except Exception as e:
         st.warning(f"Could not update last active timestamp: {str(e)}")
 

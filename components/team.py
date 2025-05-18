@@ -1,8 +1,10 @@
 import streamlit as st
 from datetime import datetime
-
-from models import data_manager
+import uuid # Import uuid for generating message IDs
 from styles import render_role_badge, format_timestamp
+from supabase_client import supabase # Import supabase client
+from models import data_manager # Import data_manager for user operations
+
 
 def show_team(current_user=None):
     """Display team directory page with user listing and filtering"""
@@ -12,8 +14,13 @@ def show_team(current_user=None):
 
     st.header("Team Directory")
 
-    # Get all users
-    all_users = data_manager.users
+    # Get all users from Supabase (fetching from profiles table for display data)
+    try:
+        response = supabase.from_('profiles').select('*').execute()
+        all_users = response.data if response.data else []
+    except Exception as e:
+        st.error(f"Error fetching users: {str(e)}")
+        all_users = []
 
     # Filter options
     col1, col2 = st.columns(2)
@@ -24,7 +31,7 @@ def show_team(current_user=None):
 
     with col2:
         # Filter by role
-        available_roles = sorted(set(user.role for user in all_users))
+        available_roles = sorted(list(set(user.get('role') for user in all_users if user.get('role'))))
         role_filter = st.multiselect(
             "Filter by Role",
             options=["All"] + available_roles,
@@ -36,16 +43,16 @@ def show_team(current_user=None):
 
     # Apply name search
     if search_term:
-        filtered_users = [user for user in filtered_users 
-                         if search_term.lower() in user.name.lower()]
+        filtered_users = [user for user in filtered_users
+                         if user.get('name') and search_term.lower() in user['name'].lower()]
 
     # Apply role filter
     if role_filter and "All" not in role_filter:
-        filtered_users = [user for user in filtered_users 
-                         if user.role in role_filter]
+        filtered_users = [user for user in filtered_users
+                         if user.get('role') and user['role'] in role_filter]
 
     # Sort users by name
-    filtered_users = sorted(filtered_users, key=lambda user: user.name)
+    filtered_users = sorted(filtered_users, key=lambda user: user.get('name', ''))
 
     # Display user cards in a grid
     if filtered_users:
@@ -56,7 +63,7 @@ def show_team(current_user=None):
         for i, user in enumerate(filtered_users):
             with cols[i % 3]:
                 # Don't show current user in the directory
-                if user.id == current_user.id:
+                if user.get('id') == current_user.user_id:
                     continue
 
                 # Create a card for this user
@@ -70,11 +77,11 @@ def show_team(current_user=None):
                         margin-bottom: 1rem;
                         text-align: center;
                     ">
-                        <img src="{user.avatar}" width="100" style="border-radius: 50%; margin-bottom: 10px;">
-                        <h3 style="margin: 5px 0;">{user.name}</h3>
-                        <div>{render_role_badge(user.role)}</div>
+                        <img src="{user.get('avatar', 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff')}" width="100" style="border-radius: 50%; margin-bottom: 10px;">
+                        <h3 style="margin: 5px 0;">{user.get('name', 'Unknown User')}</h3>
+                        <div>{render_role_badge(user.get('role', 'Unknown'))}</div>
                         <p style="font-size: 0.8rem; color: var(--text-secondary-color); margin-top: 10px;">
-                            Last active: {format_timestamp(user.last_active, '%b %d')}
+                            Last active: {format_timestamp(datetime.fromisoformat(user['last_active']), '%b %d') if user.get('last_active') else 'Never'}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -82,16 +89,16 @@ def show_team(current_user=None):
                     # Add buttons to view profile or send message
                     col1, col2 = st.columns(2)
                     with col1:
-                        if st.button("View Profile", key=f"view_{user.id}"):
+                        if st.button("View Profile", key=f"view_{user.get('id')}"):
                             # Store the user ID in session state and navigate to profile page
-                            st.session_state.view_user_id = user.id
+                            st.session_state.view_user_id = user.get('id')
                             st.session_state.page = "profile"
                             st.rerun()
 
                     with col2:
-                        if st.button("Message", key=f"msg_{user.id}"):
+                        if st.button("Message", key=f"msg_{user.get('id')}"):
                             # Show message form
-                            st.session_state.message_user_id = user.id
+                            st.session_state.message_user_id = user.get('id')
                             st.session_state.page = "message"
                             st.rerun()
     else:
@@ -122,7 +129,7 @@ def show_team(current_user=None):
                 if send_submitted:
                     if message_content:
                         # Send message
-                        data_manager.send_message(current_user.id, recipient.id, message_content)
+                        data_manager.send_message(current_user.user_id, recipient.user_id, message_content)
 
                         st.success("Message sent successfully!")
 
