@@ -55,18 +55,34 @@ else:
     user_id = st.session_state['supabase_user'].id  # FIXED
 
     try:
-        # Get user profile from Supabase
-        user_response = supabase.from_('profiles').select('*').eq('id', user_id).single().execute()
-        user_data = user_response.data if user_response and user_response.data else None
-
-        if user_data:
-            current_user = user_data
+        # Try to get user profile
+        user_response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
+        profiles = user_response.data if user_response and user_response.data else []
+        if profiles and len(profiles) == 1:
+            current_user = profiles[0]
         else:
-            st.error("Authenticated user profile not found in Supabase.")
-            st.stop()
+            # If no profile exists, create a default one and fetch again
+            user_email = getattr(st.session_state['supabase_user'], "email", "")
+            user_name = user_email.split("@")[0] if user_email else "Unknown"
+            # Insert a default profile
+            supabase.from_('profiles').insert({
+                "id": user_id,
+                "name": user_name,
+                "email": user_email,
+                "role": "Front Desk"
+            }).execute()
+            # Fetch the new profile
+            user_response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
+            profiles = user_response.data if user_response and user_response.data else []
+            if profiles and len(profiles) == 1:
+                current_user = profiles[0]
+            else:
+                st.error("Failed to auto-create user profile. Contact admin.")
+                st.stop()
     except Exception as e:
-        st.error(f"Error getting user: {str(e)}")
+        st.error(f"Error getting or creating user profile: {str(e)}")
         st.stop()
+
 
     # Update user's last active timestamp (don't fail hard if it breaks)
     try:
