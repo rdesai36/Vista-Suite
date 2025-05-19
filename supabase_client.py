@@ -1,4 +1,5 @@
 import os
+import supabase
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import streamlit as st
