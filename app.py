@@ -106,9 +106,15 @@ else:
     with st.sidebar:
         # User profile summary in sidebar
         if current_user:
-            st.image(current_user.get("avatar", ""), width=100)
-            st.subheader(current_user.get("name", ""))
+            avatar_url = current_user.get("avatar_url", "")
+            if avatar_url:
+                st.image(avatar_url, width=100)
+            # Sidebar user display
+            name_display = st.session_state.get("sidebar_name") or (current_user.get("first_name", "") + " " + (current_user.get("last_name", "")[:1]).upper() + ".")
+            st.subheader(name_display.strip())
+            st.subheader(full_name or current_user.get("email", ""))
             st.caption(current_user.get("role", ""))
+
 
         st.header("Navigation")
 

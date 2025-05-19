@@ -5,14 +5,14 @@ import os
 def load_theme_settings():
     """Load theme settings from session state or set defaults"""
     if 'theme' not in st.session_state:
-        st.session_state.theme = 'light'  # Default theme
+        st.session_state.theme = 'dark'  # Default theme
 
 def toggle_theme():
     """Toggle between light and dark theme"""
     if st.session_state.theme == 'light':
         st.session_state.theme = 'dark'
     else:
-        st.session_state.theme = 'light'
+        st.session_state.theme = 'dark'
 
 def get_theme_colors():
     """Get colors for current theme"""

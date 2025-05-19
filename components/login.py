@@ -28,29 +28,31 @@ def show_login():
     # SIGN UP TAB
     with tab2:
         st.subheader("Create Account")
-        name = st.text_input("Full Name", key="signup_name").strip()
+        first_name = st.text_input("First Name", key="signup_first_name").strip()
+        last_name = st.text_input("Last Name", key="signup_last_name").strip()
         email = st.text_input("Email", key="signup_email").strip().lower()
+        phone = st.text_input("Phone Number", key="signup_phone").strip()
         password = st.text_input("Password", type="password", key="signup_password")
         confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
 
         if st.button("Sign Up", key="signup_button"):
-            if not all([name, email, password, confirm_password]):
+            if not all([first_name, last_name, email, phone, password, confirm_password]):
                 st.warning("Please fill in all fields.")
             elif password != confirm_password:
                 st.error("Passwords do not match.")
             else:
-                user_data = {"name": name}
+                user_data = {"first_name": first_name, "last_name": last_name, "phone": phone}
                 user = sign_up(email, password, user_data)
                 if user:
-                    # OPTIONAL: Add to your profiles table as well (only if not handled automatically)
                     supabase = get_supabase_client()
                     supabase.from_("profiles").insert({
                         "id": user.id,
-                        "name": name,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "phone": phone,
                         "email": email,
-                        "role": "Front Desk",    # Or whatever your default is
+                        "role": "Front Desk",    # Default
                     }).execute()
-
                     st.success("Account created successfully! Please log in.")
                     st.session_state["page"] = "login"
                     st.rerun()

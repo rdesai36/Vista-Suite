@@ -1,297 +1,121 @@
 import streamlit as st
+from supabase_client import get_supabase_client
 from datetime import datetime
-from styles import render_role_badge, format_timestamp
-from supabase_client import supabase # Import supabase client
 
+def show_profile(current_user, view_user_id=None):
+    supabase = get_supabase_client()
+    user_id = view_user_id or current_user["id"]
+    user_profile = current_user if not view_user_id or view_user_id == current_user["id"] else None
 
-def show_profile(current_user=None, user_id=None):
-    """Display user profile, either current user or another user"""
-    if not current_user:
-        st.warning("No user profile found. Please log in or create a profile.")
-        return
-
-    # Determine which profile to show
-    if user_id and user_id != current_user['id']:
-        # Viewing someone else's profile
-        profile_user = get_user_profile_from_supabase(user_id)
-        if not profile_user:
-            st.error(f"User profile not found.")
+    # If viewing another user, fetch their profile
+    if not user_profile:
+        resp = supabase.from_("profiles").select("*").eq("id", user_id).execute()
+        data = resp.data if resp and resp.data else []
+        if data and len(data) == 1:
+            user_profile = data[0]
+        else:
+            st.error("User not found.")
             return
 
-        show_read_only_profile(profile_user, current_user)
-    else:
-        # Viewing own profile
-        show_editable_profile(current_user)
-
-
-def get_user_profile_from_supabase(user_id):
-    """Fetch user profile from Supabase"""
-    try:
-        response = supabase.from_('profiles').select('*').eq('id', user_id).single().execute()
-        return response.data
-    except Exception as e:
-        st.error(f"Error fetching user profile {user_id}: {str(e)}")
-        return None
-
-
-def show_editable_profile(user):
-    """Display and allow editing of current user's profile"""
-    st.header("My Profile")
-
-    # Fetch the latest profile data for editing
-    profile_data = get_user_profile_from_supabase(user['id'])
-    if not profile_data:
-        st.error("Could not load your profile data.")
-        return
-
-    col1, col2 = st.columns([1, 3])
-
+    # --- Avatar Display ---
+    avatar_url = user_profile.get("avatar_url", "")
+    col1, col2 = st.columns([1,3])
     with col1:
-        # Display avatar
-        st.image(profile_data.get('avatar', 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'), width=150)
+        if avatar_url:
+            st.image(avatar_url, width=150)
+        else:
+            st.info("No avatar set. (Upload below if this is your profile)")
 
-        # Display role badge
-        st.markdown(f"""
-        <div style="text-align: center; margin-top: 10px;">
-            {render_role_badge(profile_data.get('role', 'Unknown'))}
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Last active display
-        last_active_time = profile_data.get('last_active')
-        formatted_last_active = format_timestamp(datetime.fromisoformat(last_active_time)) if last_active_time else 'Never'
-        st.markdown(f"""
-        <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary-color);">
-            Last active: {formatted_last_active}
-        </div>
-        """, unsafe_allow_html=True)
-
-
+    # --- Name/Role Display ---
+    full_name = ((user_profile.get("first_name") or "") + " " + (user_profile.get("last_name") or "")).strip()
+    short_name = (user_profile.get("first_name") or "") + " " + ((user_profile.get("last_name") or "")[:1]).upper() + "."
+    st.session_state["sidebar_name"] = short_name.strip() if user_profile.get("first_name") else user_profile.get("name", "")
     with col2:
-        with st.form("edit_profile_form"):
-            name = st.text_input("Name", profile_data.get('name', ''))
+        st.title(f"Profile: {full_name or user_profile.get('name', '')}")
+        st.caption(f"Role: {user_profile.get('role', 'N/A')}")
 
-            # Only managers can change roles
-            # Assuming role is stored in the 'profiles' table
-            current_role = profile_data.get('role', 'Unknown')
-            if current_role == "Manager":
-                role_options = ["Manager", "Front Desk", "Housekeeping", "Maintenance", "Sales", "Inspector"]
-                role = st.selectbox("Role", options=role_options, index=role_options.index(current_role) if current_role in role_options else 0)
-            else:
-                role = current_role
-                st.markdown(f"**Role:** {role} *(Only managers can change roles)*")
+    # --- Profile Info Section ---
+    st.markdown("---")
+    st.subheader("Contact Info")
+    st.write(f"**First Name:** {user_profile.get('first_name', 'N/A')}")
+    st.write(f"**Last Name:** {user_profile.get('last_name', 'N/A')}")
+    st.write(f"**Email:** {user_profile.get('email', 'N/A')}")
+    st.write(f"**Phone:** {user_profile.get('phone', 'N/A')}")
 
-            email = st.text_input("Email", profile_data.get('email', ''))
-            phone = st.text_input("Phone", profile_data.get('phone', ''))
-            bio = st.text_area("Bio", profile_data.get('bio', ''), height=150)
-            avatar_url = st.text_input("Avatar URL (optional)", profile_data.get('avatar', ''))
+    st.markdown("---")
+    st.subheader("Account Details")
+    st.write(f"**Status:** {user_profile.get('status', 'N/A')}")
+    st.write(f"**Bio:** {user_profile.get('bio', 'N/A')}")
 
-            submitted = st.form_submit_button("Save Changes")
-
-            if submitted:
-                # Update user profile in Supabase
-                update_data = {
-                    'name': name,
-                    'email': email,
-                    'phone': phone,
-                    'bio': bio,
-                    'avatar': avatar_url if avatar_url else None # Store None if empty
+    # --- Profile Edit Section (Self Only) ---
+    if not view_user_id or view_user_id == current_user["id"]:
+        st.markdown("---")
+        st.subheader("Edit Contact Info")
+        with st.form("edit_contact_info_form"):
+            new_first = st.text_input("First Name", value=user_profile.get("first_name", ""))
+            new_last = st.text_input("Last Name", value=user_profile.get("last_name", ""))
+            new_phone = st.text_input("Phone", value=user_profile.get("phone", ""))
+            new_bio = st.text_area("Bio", value=user_profile.get("bio", ""))
+            if st.form_submit_button("Save Changes"):
+                update_fields = {
+                    "first_name": new_first,
+                    "last_name": new_last,
+                    "phone": new_phone,
+                    "bio": new_bio
                 }
-                if current_role == "Manager": # Only managers can update role
-                     update_data['role'] = role
+                supabase.from_("profiles").update(update_fields).eq("id", user_id).execute()
+                st.success("Profile updated. Refresh to see changes.")
 
-                try:
-                    response = supabase.from_('profiles').update(update_data).eq('id', user['id']).execute()
-                    if response.data:
-                        st.success("Profile updated successfully!")
-                        st.rerun() # Rerun to show updated profile
-                    else:
-                         st.error(f"Error updating profile: {response.error.message}")
-                except Exception as e:
-                    st.error(f"Error updating profile: {str(e)}")
+        st.markdown("---")
+        st.subheader("Update Profile Photo")
+        uploaded_file = st.file_uploader("Upload avatar (PNG/JPG, max 2MB)", type=["png", "jpg", "jpeg"])
+        if uploaded_file:
+            bucket = "avatars"
+            file_ext = uploaded_file.name.split('.')[-1]
+            file_path = f"{user_id}/avatar.{file_ext}"
+            storage = supabase.storage()
+            try:
+                storage.from_(bucket).remove([file_path])
+            except Exception:
+                pass
+            upload_res = storage.from_(bucket).upload(file_path, uploaded_file)
+            if hasattr(upload_res, "status_code") and upload_res.status_code not in [200, 201]:
+                st.error("Failed to upload avatar. Try again or check file size.")
+            else:
+                supabase_url = supabase._client_config['url'] if hasattr(supabase, '_client_config') else st.secrets["SUPABASE_URL"]
+                public_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{file_path}"
+                supabase.from_("profiles").update({"avatar_url": public_url}).eq("id", user_id).execute()
+                st.success("Avatar updated! Please refresh the page to see it.")
 
+    # --- Extra Info/Legacy Fields ---
+    st.markdown("---")
+    st.subheader("Legacy/Other Info")
+    st.write(f"**Name (legacy):** {user_profile.get('name', '')}")
 
-    # Messaging section - display recent messages
-    st.header("My Messages")
-
-    # Get messages for current user (sent or received)
-    try:
-        sent_messages_response = supabase.from_('messages').select('*, threads(title)').eq('sender_id', user['id']).order('timestamp', desc=True).limit(5).execute()
-        received_messages_response = supabase.from_('messages').select('*, threads(title)').eq('recipient_id', user['id']).order('timestamp', desc=True).limit(5).execute()
-
-        sent_messages = sent_messages_response.data if sent_messages_response.data else []
-        received_messages = received_messages_response.data if received_messages_response.data else []
-
-        # Combine and sort messages
-        messages = sorted(sent_messages + received_messages, key=lambda msg: msg.get('timestamp', ''), reverse=True)
-
-    except Exception as e:
-        st.error(f"Error fetching messages: {str(e)}")
-        messages = []
-
-
-    if messages:
-        for message in messages:
-            is_sent = message.get('sender_id') == user['id']
-            other_user_id = message.get('recipient_id') if is_sent else message.get('sender_id')
-
-            # Fetch the other user's profile to get their name
-            other_user_profile = get_user_profile_from_supabase(other_user_id)
-            other_name = other_user_profile.get('name', 'Unknown User') if other_user_profile else 'Unknown User'
-
-            # Assuming 'is_read' column exists in messages table
-            is_read = message.get('is_read', False)
-
-            with st.expander(
-                f"{'To' if is_sent else 'From'}: {other_name} - {format_timestamp(datetime.fromisoformat(message.get('timestamp')), '%b %d, %I:%M %p') if message.get('timestamp') else 'No Timestamp'}",
-                expanded=not is_read and not is_sent # Expand unread received messages
-            ):
-                st.markdown(f"""
-                **{'Sent' if is_sent else 'Received'}:** {format_timestamp(datetime.fromisoformat(message.get('timestamp'))) if message.get('timestamp') else 'Unknown Time'}
-
-                {message.get('content', 'No Content')}
-                """)
-
-                # Mark as read if it's a received message and not already read
-                if not is_sent and not is_read:
-                    if st.button("Mark as Read", key=f"msg_read_{message.get('id', uuid.uuid4())}"): # Assuming message has an 'id'
-                        try:
-                            update_response = supabase.from_('messages').update({'is_read': True}).eq('id', message['id']).execute()
-                            if update_response.data:
-                                st.success("Marked as read")
-                                st.rerun()
-                            else:
-                                st.error(f"Error marking message as read: {update_response.error.message}")
-                        except Exception as e:
-                            st.error(f"Error marking message as read: {str(e)}")
-    else:
-        st.info("No messages to display.")
-
-    # Form to send a new message
-    st.subheader("Send New Message")
-
-    # Get all users except current user
-    try:
-        all_users_response = supabase.from_('users').select('id, name, role').execute()
-        all_users = all_users_response.data if all_users_response.data else []
-        other_users = [u for u in all_users if u['id'] != user['id']]
-    except Exception as e:
-        st.error(f"Error fetching users for new message: {str(e)}")
-        other_users = []
-
-
-    if other_users:
-        with st.form("send_message_form"):
-            recipient_options = [(u['id'], f"{u['name']} ({u['role']})") for u in other_users]
-            recipient_ids = [u[0] for u in recipient_options]
-            recipient_labels = [u[1] for u in recipient_options]
-
-            # Handle case where there are no other users after filtering
-            if not recipient_ids:
-                 st.info("No other users available to message.")
-                 return
-
-            recipient_index = st.selectbox(
-                "Recipient",
-                options=range(len(recipient_options)),
-                format_func=lambda x: recipient_labels[x]
-            )
-
+    # --- Messaging Section ---
+    st.markdown("---")
+    profile_user = user_profile
+    if view_user_id and profile_user:
+        st.subheader(f"Send Message to {profile_user.get('first_name', profile_user.get('name', 'Unknown User'))}")
+        with st.form("send_direct_message_form"):
             message_content = st.text_area("Message", "", height=100)
-
             send_submitted = st.form_submit_button("Send Message")
-
             if send_submitted:
                 if message_content:
-                    recipient_id = recipient_ids[recipient_index]
-
-                    # Send message using Supabase
                     try:
                         message_data = {
-                            'sender_id': user['id'],
-                            'recipient_id': recipient_id,
+                            'sender_id': current_user['id'],
+                            'receiver_id': profile_user['id'],
                             'content': message_content,
-                            'timestamp': datetime.now().isoformat(),
-                            'is_read': False # Mark as unread initially
+                            'created_at': datetime.now().isoformat(),
+                            'read': False
                         }
                         insert_response = supabase.from_('messages').insert([message_data]).execute()
-
                         if insert_response.data:
                             st.success("Message sent successfully!")
-                            st.rerun()  # Reset form
                         else:
                             st.error(f"Error sending message: {insert_response.error.message}")
                     except Exception as e:
                         st.error(f"Error sending message: {str(e)}")
                 else:
                     st.error("Please enter a message.")
-    else:
-        st.info("No other users available to message.")
-
-
-def show_read_only_profile(profile_user, current_user):
-    """Display read-only view of another user's profile"""
-    st.header(f"{profile_user.get('name', 'Unknown User')}'s Profile")
-
-    col1, col2 = st.columns([1, 3])
-
-    with col1:
-        # Display avatar
-        st.image(profile_user.get('avatar', 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff'), width=150)
-
-        # Display role badge
-        st.markdown(f"""
-        <div style="text-align: center; margin-top: 10px;">
-            {render_role_badge(profile_user.get('role', 'Unknown'))}
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Last active display
-        last_active_time = profile_user.get('last_active')
-        formatted_last_active = format_timestamp(datetime.fromisoformat(last_active_time)) if last_active_time else 'Never'
-        st.markdown(f"""
-        <div style="text-align: center; margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary-color);">
-            Last active: {formatted_last_active}
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"**Email:** {profile_user.get('email', 'Not provided') or 'Not provided'}")
-        st.markdown(f"**Phone:** {profile_user.get('phone', 'Not provided') or 'Not provided'}")
-
-        if profile_user.get('bio'):
-            st.markdown("**Bio:**")
-            st.markdown(profile_user.get('bio'))
-        else:
-            st.markdown("**Bio:** No bio provided.")
-
-    # Option to send a message to this user
-    st.subheader(f"Send Message to {profile_user.get('name', 'Unknown User')}")
-
-    with st.form("send_direct_message_form"):
-        message_content = st.text_area("Message", "", height=100)
-
-        send_submitted = st.form_submit_button("Send Message")
-
-        if send_submitted:
-            if message_content:
-                # Send message using Supabase
-                try:
-                    message_data = {
-                        'sender_id': current_user['id'],
-                        'recipient_id': profile_user['id'],
-                        'content': message_content,
-                        'timestamp': datetime.now().isoformat(),
-                        'is_read': False # Mark as unread initially
-                    }
-                    insert_response = supabase.from_('messages').insert([message_data]).execute()
-
-                    if insert_response.data:
-                        st.success("Message sent successfully!")
-                        # Optionally navigate to messaging tab or show a link
-                    else:
-                        st.error(f"Error sending message: {insert_response.error.message}")
-                except Exception as e:
-                    st.error(f"Error sending message: {str(e)}")
-            else:
-                st.error("Please enter a message.")
