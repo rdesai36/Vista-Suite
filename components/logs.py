@@ -1,167 +1,104 @@
 import streamlit as st
+from supabase_client import get_supabase_client
 from datetime import datetime
-import uuid
 
-from supabase_client import supabase
-from styles import render_role_badge, format_timestamp
+def show_logs(current_user):
+    supabase = get_supabase_client()
+    st.title("Front Desk Logbook")
 
-def show_logs(current_user=None):
-    """Display logs and notes page"""
-    if not current_user:
-        st.warning("No user profile found. Please log in or create a profile.")
-        return
-    
-    st.header("Logs & Notes")
-    
-    # Create tabs for viewing and creating logs
-    tab1, tab2 = st.tabs(["Recent Logs", "Create New Log"])
-    
-    with tab1:
-        show_recent_logs(current_user)
-    
-    with tab2:
-        create_new_log(current_user)
-
-
-def show_recent_logs(current_user):
-    """Display recent logs with filtering options"""
-    st.subheader("Recent Logs")
-    
-    # Get all logs from Supabase
+    # --- Fetch all profiles for read-by display ---
     try:
-        response = supabase.from_('logs').select('*').order('timestamp', desc=True).execute()
-        all_logs = response.data
+        profiles_response = supabase.from_('profiles').select('id, first_name, last_name').execute()
+        all_profiles = profiles_response.data if profiles_response and profiles_response.data else []
+        profile_map = {p['id']: f"{p.get('first_name','')} {p.get('last_name','')[0]}.".strip() for p in all_profiles}
+    except Exception as e:
+        profile_map = {}
+
+    # --- Fetch Logs (filter/search optional) ---
+    filter_text = st.text_input("Filter logs (by title/message/user)", value="", key="log_filter")
+    logs = []
+    try:
+        logs_response = supabase.from_('logs').select('*').order('created_at', desc=True).execute()
+        logs = logs_response.data if logs_response and logs_response.data else []
+        if filter_text:
+            filter_lower = filter_text.lower()
+            logs = [
+                log for log in logs
+                if filter_lower in (log.get('title', '').lower() + log.get('message', '').lower() + log.get('user_name', '').lower())
+            ]
     except Exception as e:
         st.error(f"Error fetching logs: {str(e)}")
-        all_logs = []
-    
-    # Filter options
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Filter by time period
-        time_filter = st.selectbox(
-            "Time Period",
-            ["All Time", "Today", "Last 3 Days", "Last Week", "Last Month"],
-            index=0
-        )
-    
-    with col2:
-        # Filter by department/role
-        available_roles = set(log['author_role'] for log in all_logs if 'author_role' in log)
-        role_filter = st.multiselect(
-            "Department/Role",
-            options=list(available_roles),
-            default=[]
-        )
-    
-    # Apply filters
-    filtered_logs = all_logs
-    
-    # Apply time filter
-    now = datetime.now()
-    if time_filter == "Today":
-        filtered_logs = [log for log in filtered_logs if 'timestamp' in log and datetime.fromisoformat(log['timestamp']).date() == now.date()]
-    elif time_filter == "Last 3 Days":
-        three_days_ago = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=3)
-        filtered_logs = [log for log in filtered_logs if 'timestamp' in log and datetime.fromisoformat(log['timestamp']) >= three_days_ago]
-    elif time_filter == "Last Week":
-        week_ago = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=7)
-        filtered_logs = [log for log in filtered_logs if 'timestamp' in log and datetime.fromisoformat(log['timestamp']) >= week_ago]
-    elif time_filter == "Last Month":
-        month_ago = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=30) # Approximation
-        filtered_logs = [log for log in filtered_logs if 'timestamp' in log and datetime.fromisoformat(log['timestamp']) >= month_ago]
-    
-    # Apply role filter
-    if role_filter:
-        filtered_logs = [log for log in filtered_logs if 'author_role' in log and log['author_role'] in role_filter]
-    
-    # Logs are already sorted by timestamp from the Supabase query
 
-    # Display logs
-    if filtered_logs:
-        # Toggle to show/hide read logs
-        show_read = st.checkbox("Show logs I've already read", value=True)
-        
-        # Apply read/unread filter
-        if not show_read:
-            filtered_logs = [log for log in filtered_logs if 'read_by' in log and current_user['id'] not in log['read_by']]
-        
-        # Render each log
-        for log in filtered_logs:
-            is_read = 'read_by' in log and current_user['id'] in log['read_by']
-            
-            with st.expander(
-                f"{log.get('title', 'No Title')} - {format_timestamp(datetime.fromisoformat(log['timestamp']), '%b %d, %I:%M %p') if 'timestamp' in log else 'No Timestamp'}",
-                expanded=not is_read
-            ):
-                # Display log details
-                st.markdown(f"""
-                **Author:** {log.get('author_name', 'Unknown')} {render_role_badge(log.get('author_role', 'Unknown'))}
+    user_id = current_user["id"]
+
+    # --- Display Logs ---
+    if logs:
+        for log in logs:
+            read_by = log.get("read_by") or []
+            is_unread = user_id not in read_by
+            expander_header = (
+                f"{'🟢' if is_unread else '⚪'} "
+                f"{log.get('title', 'Log Entry')} - {log.get('created_at', '')[:19].replace('T', ' ')}"
+            )
+            with st.expander(expander_header):
+                # Mark as read if not already
+                if user_id not in read_by:
+                    try:
+                        new_read_by = read_by + [user_id]
+                        supabase.from_('logs').update({"read_by": new_read_by}).eq('id', log["id"]).execute()
+                        read_by = new_read_by  # for display
+                    except Exception:
+                        pass
+
+                st.write(log.get('message', ''))
+                st.caption(f"By: {log.get('user_name', 'Unknown')}")
                 
-                **Time:** {format_timestamp(datetime.fromisoformat(log['timestamp'])) if 'timestamp' in log else 'Unknown'}
-                
-                **Message:**
-                {log.get('message', 'No Message')}
-                """, unsafe_allow_html=True)
-                
-                # Mark as read button (if not already read)
-                if not is_read:
-                    if st.button("Mark as Read", key=f"mark_read_{log.get('log_id', uuid.uuid4())}"):
+                # Who has read
+                st.markdown("**Who has read this post:**")
+                names = []
+                for rid in read_by:
+                    name = profile_map.get(rid, "Unknown")
+                    if rid == user_id:
+                        name += " (you)"
+                    names.append(name)
+                if names:
+                    st.write(", ".join(names))
+                else:
+                    st.write("_No one has read this yet._")
+
+                # Admin/manager delete
+                if current_user.get("role", "").lower() in ["manager", "admin"]:
+                    if st.button(f"Delete Log {log['id']}", key=f"delete_{log['id']}"):
                         try:
-                            # Add current user's ID to the read_by array
-                            read_by_list = log.get('read_by', [])
-                            if current_user['id'] not in read_by_list:
-                                read_by_list.append(current_user['id'])
-                                update_response = supabase.from_('logs').update({'read_by': read_by_list}).eq('log_id', log['log_id']).execute()
-                                if update_response.data:
-                                    st.success("Marked as read")
-                                    st.rerun()
-                                else:
-                                    st.error(f"Error marking log as read: {update_response.error.message}")
-                            else:
-                                st.info("Log already marked as read.")
+                            supabase.from_('logs').delete().eq('id', log["id"]).execute()
+                            st.success("Log deleted. Please refresh.")
                         except Exception as e:
-                            st.error(f"Error marking log as read: {str(e)}")
+                            st.error(f"Error deleting log: {str(e)}")
     else:
-        st.info("No logs found matching the selected filters.")
+        st.info("No logs found.")
 
-
-def create_new_log(current_user):
-    """Form for creating a new log entry"""
-    st.subheader("Create New Log Entry")
-    
-    # Log form
-    with st.form("new_log_form"):
-        title = st.text_input("Title", placeholder="Log entry title")
-        message = st.text_area("Message", placeholder="Enter your log message here", height=150)
-        
-        submitted = st.form_submit_button("Submit Log Entry")
-        
+    # --- Add New Log ---
+    st.markdown("---")
+    st.subheader("Add New Log Entry")
+    with st.form("add_log_form"):
+        title = st.text_input("Title", max_chars=50)
+        message = st.text_area("Message", max_chars=2000)
+        submitted = st.form_submit_button("Submit Log")
         if submitted:
-            if title and message:
-                # Create new log entry data
-                new_log_data = {
-                    "log_id": str(uuid.uuid4()),
-                    "title": title,
-                    "message": message,
-                    "author_id": current_user['id'],
-                    "author_name": current_user['name'],
-                    "author_role": current_user['role'],
-                    "timestamp": datetime.now().isoformat(),
-                    "read_by": [current_user['id']] # Mark as read by author initially
-                }
-                
-                # Add to log database using Supabase
-                try:
-                    insert_response = supabase.from_('logs').insert([new_log_data]).execute()
-                    if insert_response.data:
-                        st.success("Log entry created successfully!")
-                        # Clear form fields by triggering a rerun
-                        st.rerun()
-                    else:
-                        st.error(f"Error creating log entry: {insert_response.error.message}")
-                except Exception as e:
-                    st.error(f"Error creating log entry: {str(e)}")
-            else:
-                st.error("Please fill in both title and message fields.")
+            log_data = {
+                "title": title,
+                "message": message,
+                "user_id": user_id,
+                "user_name": current_user.get("first_name", "") + " " + current_user.get("last_name", ""),
+                "created_at": datetime.now().isoformat(),
+                "read_by": [user_id],  # Mark creator as read
+            }
+            try:
+                insert_res = supabase.from_('logs').insert(log_data).execute()
+                if insert_res.data:
+                    st.success("Log entry added!")
+                    st.experimental_rerun()
+                else:
+                    st.error("Failed to add log.")
+            except Exception as e:
+                st.error(f"Error adding log: {str(e)}")
