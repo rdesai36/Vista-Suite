@@ -40,7 +40,8 @@ if 'start_date' not in st.session_state:
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.now().date()
 
-# Handle page routing
+# --- MAIN ROUTING ---
+
 if st.session_state.page == "login":
     show_login()
 else:
@@ -52,26 +53,23 @@ else:
     supabase = get_supabase_client()
 
     # Use the authenticated Supabase user's ID
-    user_id = st.session_state['supabase_user'].id  # FIXED
+    user_id = st.session_state['supabase_user'].id
 
+    # --- Load (or create) current_user *first* ---
     try:
-        # Try to get user profile
         user_response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
         profiles = user_response.data if user_response and user_response.data else []
         if profiles and len(profiles) == 1:
             current_user = profiles[0]
         else:
-            # If no profile exists, create a default one and fetch again
             user_email = getattr(st.session_state['supabase_user'], "email", "")
             user_name = user_email.split("@")[0] if user_email else "Unknown"
-            # Insert a default profile
             supabase.from_('profiles').insert({
                 "id": user_id,
                 "name": user_name,
                 "email": user_email,
                 "role": "Front Desk"
             }).execute()
-            # Fetch the new profile
             user_response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
             profiles = user_response.data if user_response and user_response.data else []
             if profiles and len(profiles) == 1:
@@ -83,6 +81,11 @@ else:
         st.error(f"Error getting or creating user profile: {str(e)}")
         st.stop()
 
+    # --- NOW: Define user name variables after current_user is loaded ---
+    first_name = current_user.get("first_name", "")
+    last_name = current_user.get("last_name", "")
+    full_name = (first_name + " " + last_name).strip()
+    sidebar_name = (first_name + " " + (last_name[:1] + ".") if last_name else "").strip() or current_user.get("name", "")
 
     # Update user's last active timestamp (don't fail hard if it breaks)
     try:
@@ -109,12 +112,8 @@ else:
             avatar_url = current_user.get("avatar_url", "")
             if avatar_url:
                 st.image(avatar_url, width=100)
-            # Sidebar user display
-            name_display = st.session_state.get("sidebar_name") or (current_user.get("first_name", "") + " " + (current_user.get("last_name", "")[:1]).upper() + ".")
-            st.subheader(name_display.strip())
-            st.subheader(full_name or current_user.get("email", ""))
+            st.subheader(sidebar_name or current_user.get("email", ""))
             st.caption(current_user.get("role", ""))
-
 
         st.header("Navigation")
 
