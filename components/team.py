@@ -42,4 +42,3 @@ def show_team(current_user):
             # Quick actions (messaging, view profile, etc.)
             st.button("Message", key=f"msg_{profile.get('id', idx)}", disabled=True)
             st.button("View Profile", key=f"view_{profile.get('id', idx)}", disabled=True)
-
