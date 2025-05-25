@@ -5,11 +5,6 @@ from supabase_client import get_supabase_client
 class DataHandler:
     """Class to handle data operations for the hotel dashboard"""
     
-    def __init__(self):
-        """Initialize the data handler"""
-        # We'll use Supabase client directly instead of db_manager
-        pass
-    
     def get_checkin_checkout_today(self):
         """Get today's check-ins and check-outs"""
         try:
@@ -35,8 +30,6 @@ class DataHandler:
         except Exception as e:
             print(f"Error getting room status data: {str(e)}")
             return []
-
-    """Class to handle data operations for the hotel dashboard"""
     
     def __init__(self):
         """Initialize the data handler"""
@@ -103,13 +96,13 @@ class DataHandler:
             return []
     
     def get_user_by_id(self, user_id):
-        """Get a user by ID"""
+        """Get a single user profile by ID. Returns the user profile data or None on error."""
         try:
             supabase = get_supabase_client()
-            response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
-            return response.data[0] if response.data else None
+            response = supabase.from_('profiles').select('*').eq('id', user_id).single().execute()
+            return response.data
         except Exception as e:
-            print(f"Error getting user: {str(e)}")
+            print(f"Error getting user with ID {user_id}: {str(e)}")
             return None
 
 # Create a singleton instance to be used across the app
