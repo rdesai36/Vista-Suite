@@ -62,11 +62,15 @@ def export_dataframe(df, filename="report.csv"):
     return csv
 
 def create_download_button(df, filename="report.csv", button_text="Download Report"):
-    """Create a download button for exporting data"""
+    """
+    Create a consistent, user-friendly download button for exporting data as CSV.
+    Adds a download icon and tooltip for better UX. Use this helper everywhere for consistency.
+    """
     csv = export_dataframe(df, filename)
     st.download_button(
-        label=button_text,
+        label=f"⬇️ {button_text}",
         data=csv,
         file_name=filename,
-        mime="text/csv"
+        mime="text/csv",
+        help="Download this data as a CSV file for offline analysis."
     )

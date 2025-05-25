@@ -13,15 +13,12 @@ def show_occupancy(start_date, end_date):
     st.subheader(f"Period: {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}")
     
     # Load data
-    hotel_data.load_data(start_date, end_date)
-    occupancy_data = hotel_data.get_occupancy_data(start_date, end_date)
-    
-    # if occupancy_data.empty:
-    #     st.warning("No occupancy data available for the selected period.")
-    #     return
-    
-    if occupancy_data is None:
-        st.warning("No data available.")
+    occupancy_data = pd.DataFrame(hotel_data.get_occupancy_data(start_date, end_date))
+
+    # Standardized empty state handling
+    if occupancy_data is None or (hasattr(occupancy_data, 'empty') and occupancy_data.empty):
+        st.warning("No occupancy data available for the selected period.")
+        st.info("Once your property is connected to HotelKey, occupancy metrics and trends will appear here.")
         return
 
     # Calculate overall average occupancy for the period

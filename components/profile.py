@@ -3,17 +3,20 @@ from supabase_client import get_supabase_client
 from datetime import datetime
 
 def show_profile(current_user, view_user_id=None):
+    """Display and edit user profiles with robust error handling and normalized fields."""
     supabase = get_supabase_client()
     user_id = view_user_id or current_user["id"]
     user_profile = current_user if not view_user_id or view_user_id == current_user["id"] else None
 
     # If viewing another user, fetch their profile
     if not user_profile:
-        resp = supabase.from_("profiles").select("*").eq("id", user_id).execute()
-        data = resp.data if resp and resp.data else []
-        if data and len(data) == 1:
-            user_profile = data[0]
-        else:
+        try:
+            resp = supabase.from_("profiles").select("*").eq("id", user_id).single().execute()
+            user_profile = resp.data if resp and resp.data else None
+        except Exception as e:
+            st.error(f"User not found: {str(e)}")
+            return
+        if not user_profile:
             st.error("User not found.")
             return
 
@@ -31,7 +34,7 @@ def show_profile(current_user, view_user_id=None):
     short_name = (user_profile.get("first_name") or "") + " " + ((user_profile.get("last_name") or "")[:1]).upper() + "."
     st.session_state["sidebar_name"] = short_name.strip() if user_profile.get("first_name") else user_profile.get("name", "")
     with col2:
-        st.title(f"Profile: {full_name or user_profile.get('name', '')}")
+        st.title(f"{full_name or user_profile.get('name', '')}")
         st.caption(f"Role: {user_profile.get('role', 'N/A')}")
 
     # --- Profile Info Section ---
@@ -39,12 +42,11 @@ def show_profile(current_user, view_user_id=None):
     st.subheader("Contact Info")
     st.write(f"**First Name:** {user_profile.get('first_name', 'N/A')}")
     st.write(f"**Last Name:** {user_profile.get('last_name', 'N/A')}")
-    st.write(f"**Email:** {user_profile.get('email', 'N/A')}")
+    st.write(f"**Email:** {st.session_state.get('email', user_profile.get('email', 'N/A'))}")
     st.write(f"**Phone:** {user_profile.get('phone', 'N/A')}")
 
     st.markdown("---")
     st.subheader("Account Details")
-    st.write(f"**Status:** {user_profile.get('status', 'N/A')}")
     st.write(f"**Bio:** {user_profile.get('bio', 'N/A')}")
 
     # --- Profile Edit Section (Self Only) ---
@@ -63,8 +65,11 @@ def show_profile(current_user, view_user_id=None):
                     "phone": new_phone,
                     "bio": new_bio
                 }
-                supabase.from_("profiles").update(update_fields).eq("id", user_id).execute()
-                st.success("Profile updated. Refresh to see changes.")
+                try:
+                    supabase.from_("profiles").update(update_fields).eq("id", user_id).execute()
+                    st.success("Profile updated. Refresh to see changes.")
+                except Exception as e:
+                    st.error(f"Error updating profile: {str(e)}")
 
         st.markdown("---")
         st.subheader("Update Profile Photo")
@@ -78,7 +83,15 @@ def show_profile(current_user, view_user_id=None):
                 storage.from_(bucket).remove([file_path])
             except Exception:
                 pass
-            upload_res = storage.from_(bucket).upload(file_path, uploaded_file)
+            try:
+                upload_res = storage.from_(bucket).upload(file_path, uploaded_file)
+                if upload_res:
+                    supabase_url = supabase._client_config['url'] if hasattr(supabase, '_client_config') else st.secrets["SUPABASE_URL"]
+                    public_url = f"{supabase_url}/storage/v1/object/public/{bucket}/{file_path}"
+                    supabase.from_("profiles").update({"avatar_url": public_url}).eq("id", user_id).execute()
+                    st.success("Avatar updated!")
+            except Exception as e:
+                st.error(f"Error uploading avatar: {str(e)}")
             if hasattr(upload_res, "status_code") and upload_res.status_code not in [200, 201]:
                 st.error("Failed to upload avatar. Try again or check file size.")
             else:

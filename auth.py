@@ -1,6 +1,9 @@
 import streamlit as st
 from supabase_client import get_supabase_client
 import time
+from streamlit.server.server import Server
+import extra_streamlit_components as stx
+from tornado import httputil #Handle Headers
 
 def sign_up(email, password, user_data=None):
     """Register a new user with Supabase Auth and return the user object if successful."""
@@ -99,3 +102,64 @@ def require_auth():
         st.session_state.page = "login"
         st.rerun()
     return user
+
+def get_headers():
+    # Hack to get the session object from Streamlit.
+    headers=[]
+    current_server = Server.get_current()
+    if hasattr(current_server, '_session_infos'):
+        # Streamlit < 0.56
+        session_infos = Server.get_current()._session_infos.values()
+    else:
+        session_infos = Server.get_current()._session_info_by_id.values()
+    # Multiple Session Objects?
+    for session_info in session_infos:
+        headers.append(session_info.ws.request.headers)
+
+def restore_supabase_session_from_cookie():
+    import base64, json, time
+    cookie_manager = get_manager()
+    cookies = cookie_manager.get_all()
+    token = None
+    for key in cookies:
+        if key.startswith('sb-') and key.endswith('-auth-token'):
+            token = cookies[key]
+            break
+    if token:
+        try:
+            # JWT format: header.payload.signature
+            payload_b64 = token.split('.')[1]
+            padding = '=' * (4 - (len(payload_b64) % 4)) if len(payload_b64) % 4 else ''
+            payload_b64 += padding
+            payload_json = base64.urlsafe_b64decode(payload_b64)
+            payload = json.loads(payload_json)
+            email = payload.get('email')
+            exp = payload.get('exp')  # expiry timestamp (seconds since epoch)
+            now = int(time.time())
+            if exp and now < exp:
+                # Session is still valid
+                st.session_state['email'] = email
+                # Simulate a minimal supabase_user object for session restoration
+                st.session_state['supabase_user'] = type('User', (), {})()
+                st.session_state['supabase_user'].id = payload.get('sub', '')
+                st.session_state['supabase_user'].email = email
+                # Optionally: st.session_state['supabase_access_token'] = token
+                return True
+            else:
+                # Token expired - clear session
+                st.session_state.pop('supabase_user', None)
+                st.session_state.pop('email', None)
+                return False
+        except Exception as e:
+            print(f"Error decoding/restoring Supabase session from JWT: {e}")
+            st.session_state.pop('supabase_user', None)
+            st.session_state.pop('email', None)
+            return False
+    return False
+
+def get_email_from_cookies():
+    # For backward compatibility, call the new restore logic
+    restore_supabase_session_from_cookie()
+
+
+get_email_from_cookies()

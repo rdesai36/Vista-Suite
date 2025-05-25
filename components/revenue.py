@@ -13,15 +13,12 @@ def show_revenue(start_date, end_date):
     st.subheader(f"Period: {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}")
     
     # Load data
-    hotel_data.load_data(start_date, end_date)
-    revenue_data = hotel_data.get_revenue_data(start_date, end_date)
-    
-    if revenue_data is None:
-        st.warning("No revenue data available for the selected period.")
-        return
+    revenue_data = pd.DataFrame(hotel_data.get_revenue_data(start_date, end_date))
 
-    if revenue_data is None:
-        st.warning("No data available.")
+    # Standardized empty state handling
+    if revenue_data is None or (hasattr(revenue_data, 'empty') and revenue_data.empty):
+        st.warning("No revenue data available for the selected period.")
+        st.info("Once your property is connected to HotelKey, revenue metrics and trends will appear here.")
         return
     
     # Calculate key revenue metrics (if data is available)

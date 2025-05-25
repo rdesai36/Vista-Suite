@@ -2,15 +2,17 @@ import streamlit as st
 from auth import sign_in, sign_up
 from supabase_client import get_supabase_client
 
+
+
 def show_login():
     """Display login page with email/password authentication"""
-    st.title("Welcome to Vista Suite")
-
+    st.image("newvista-narrow.png", width=500)
     tab1, tab2 = st.tabs(["Login", "Sign Up"])
+    st.markdown("----")
 
     # LOGIN TAB
     with tab1:
-        st.subheader("Login")
+        st.subheader("Login", )
         email = st.text_input("Email", key="login_email").strip().lower()
         password = st.text_input("Password", type="password", key="login_password")
 
@@ -45,14 +47,19 @@ def show_login():
                 user = sign_up(email, password, user_data)
                 if user:
                     supabase = get_supabase_client()
-                    supabase.from_("profiles").insert({
-                        "id": user.id,
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "phone": phone,
-                        "email": email,
-                        "role": "Front Desk",    # Default
-                    }).execute()
+                    # Prevent duplicate profiles by checking if one already exists
+                    existing = supabase.from_("profiles").select("id").eq("id", user.id).execute()
+                    if not (existing.data and len(existing.data) > 0):
+                        profile_data = {
+                            "id": user.id,
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "phone": phone,
+                            "email": email,
+                            "role": "Front Desk",  # Default
+                            "created_at": datetime.now().isoformat()
+                        }
+                        supabase.from_("profiles").insert(profile_data).execute()
                     st.success("Account created successfully! Please log in.")
                     st.session_state["page"] = "login"
                     st.rerun()

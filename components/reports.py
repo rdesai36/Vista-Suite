@@ -12,10 +12,11 @@ def show_reports(start_date, end_date):
     st.subheader(f"Period: {start_date.strftime('%b %d, %Y')} to {end_date.strftime('%b %d, %Y')}")
     
     # Load data
-    hotel_data.load_data(start_date, end_date)
-
-    if hotel_data is None:
-        st.warning("No data available.")
+    
+    # Standardized empty state handling
+    if hotel_data is None or (hasattr(hotel_data, 'empty') and hotel_data.empty):
+        st.warning("No report data available for the selected period.")
+        st.info("Once your property is connected to the PMS or HotelKeyAPI, reports and exports will appear here.")
         return
     
     # Sidebar for report type selection
@@ -40,7 +41,8 @@ def show_reports(start_date, end_date):
     elif report_type == "Guest Statistics Report":
         show_guest_statistics_report(start_date, end_date)
     elif report_type == "Custom Report Builder":
-        show_custom_report_builder(start_date, end_date)
+        st.info("Custom report builder coming soon!", icon="🛠️")
+        st.caption("Tip: You will be able to create custom analytics and export tailored reports in a future release.")
 
 
 def show_occupancy_report(start_date, end_date):
@@ -48,7 +50,7 @@ def show_occupancy_report(start_date, end_date):
     st.subheader("Daily Occupancy Report")
     
     # Get occupancy data
-    occupancy_data = hotel_data.get_occupancy_data(start_date, end_date)
+    occupancy_data = pd.DataFrame(hotel_data.get_occupancy_data(start_date, end_date))
     
     if occupancy_data is None:
         st.warning("No occupancy data available for the selected period.")
@@ -304,9 +306,8 @@ def show_custom_report_builder(start_date, end_date):
     st.subheader("Custom Report Builder")
     
     # Load all available data
-    hotel_data.load_data(start_date, end_date)
-    
-    occupancy_data = hotel_data.get_occupancy_data(start_date, end_date)
+        
+    occupancy_data = pd.DataFrame(hotel_data.get_occupancy_data(start_date, end_date))
     revenue_data = hotel_data.get_revenue_data(start_date, end_date)
     booking_data = hotel_data.get_booking_data(start_date, end_date)
     room_data = hotel_data.get_room_status_data()

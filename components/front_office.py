@@ -9,11 +9,16 @@ def show_front_office():
     st.header("Front Office Management")
     
     # Load data
-    hotel_data.load_data()
-    
+        
     # Get today's arrivals and departures
-    checkins, checkouts = hotel_data.get_checkin_checkout_today()
-    
+    if hasattr(hotel_data, 'get_checkin_checkout_today'):
+        checkins, checkouts = hotel_data.get_checkin_checkout_today()
+        checkins = pd.DataFrame(checkins)
+        checkouts = pd.DataFrame(checkouts)
+    else:
+        st.error("Check-in/Check-out data function is missing from DataHandler. Please contact support.")
+        checkins, checkouts = [], []
+
     # Tabs for different front office functions
     tab1, tab2, tab3, tab4 = st.tabs([
         "Today's Activity", 
@@ -21,16 +26,20 @@ def show_front_office():
         "Room Availability", 
         "Quick Actions"
     ])
-    
+
     with tab1:
-        show_today_activity(checkins, checkouts)
-    
+        if (hasattr(checkins, 'empty') and checkins.empty) and (hasattr(checkouts, 'empty') and checkouts.empty):
+            st.warning("No front office data available for today.")
+            st.info("Once your property is connected to HotelKey, front office metrics and guest activity will appear here.")
+        else:
+            show_today_activity(checkins, checkouts)
+
     with tab2:
         show_guest_search()
-    
+
     with tab3:
         show_room_availability()
-    
+
     with tab4:
         show_quick_actions()
 
@@ -160,7 +169,7 @@ def show_room_availability():
         st.error("Check-out date must be after check-in date")
     else:
         # Get room data
-        room_data = hotel_data.get_room_status_data()
+        room_data = pd.DataFrame(hotel_data.get_room_status_data())
         
         # In a real app, this would filter for available rooms between these dates
         if not room_data is None:
@@ -196,26 +205,15 @@ def show_quick_actions():
     col1, col2 = st.columns(2)
     
     with col1:
-        st.write("Guest Management")
+        st.markdown("__Guest Management__")
         st.button("New Reservation")
         st.button("Walk-in Check-in")
         st.button("Early Check-in Request")
         st.button("Late Check-out Request")
     
     with col2:
-        st.write("Room Management")
+        st.markdown("__Room Management__")
         st.button("Room Status Update")
         st.button("Housekeeping Request")
         st.button("Maintenance Request")
         st.button("Room Change Request")
-    
-    # Daily tasks and notes section
-    st.subheader("Front Desk Notes")
-    
-    notes = st.text_area("Add notes for the team", height=100)
-    if st.button("Save Notes"):
-        st.success("Notes saved successfully!")
-    
-    # Display existing notes (in a real app, these would be loaded from a database)
-    st.subheader("Shift Notes")
-    st.info("No previous notes found.")

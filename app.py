@@ -21,15 +21,33 @@ from auth import require_auth
 # Page configuration
 st.set_page_config(
     page_title="Vista Suite",
-    page_icon="logobg.png",
+    page_icon="newvistaicon.png",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto",
 )
 
 # Apply custom theme and styles
 load_theme_settings()
 apply_theme()
 apply_mobile_styles()
+
+st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+    html, body, [class*="css"]  {
+        font-family: 'Inter', 'Roboto', 'Segoe UI', Arial, sans-serif !important;
+        letter-spacing: 0.01em;
+        color: #23272f;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 700 !important;
+        letter-spacing: 0.02em;
+    }
+    .stButton>button, .stTextInput>div>input, .stSelectbox>div>div>div>input {
+        font-family: 'Inter', 'Roboto', 'Segoe UI', Arial, sans-serif !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Initialize session state for navigation and settings
 if 'page' not in st.session_state:
@@ -62,13 +80,14 @@ else:
         if profiles and len(profiles) == 1:
             current_user = profiles[0]
         else:
-            user_email = getattr(st.session_state['supabase_user'], "email", "")
+            user_email = st.session_state.get('email') or getattr(st.session_state['supabase_user'], "email", "")
             user_name = user_email.split("@")[0] if user_email else "Unknown"
+            user_role = getattr(st.session_state['supabase_user'], "role", "")
             supabase.from_('profiles').insert({
                 "id": user_id,
                 "name": user_name,
                 "email": user_email,
-                "role": "Front Desk"
+                "role": user_role,
             }).execute()
             user_response = supabase.from_('profiles').select('*').eq('id', user_id).execute()
             profiles = user_response.data if user_response and user_response.data else []
@@ -107,15 +126,16 @@ else:
 
     # Sidebar for navigation and filters
     with st.sidebar:
+        st.image("newvista-narrow.png", use_container_width=True)
         # User profile summary in sidebar
         if current_user:
             avatar_url = current_user.get("avatar_url", "")
             if avatar_url:
-                st.image(avatar_url, width=100)
+                st.image(avatar_url, width=150)
             st.subheader(sidebar_name or current_user.get("email", ""))
             st.caption(current_user.get("role", ""))
-
-        st.header("Navigation")
+            
+        st.markdown("---")
 
         # Primary Navigation
         if st.button("🏠 Home", use_container_width=True,
@@ -150,7 +170,7 @@ else:
         st.markdown("---")
 
         # Hotel Metrics Navigation
-        st.subheader("Hotel Metrics")
+        st.subheader("Metrics")
 
         if st.button("📊 Dashboard", use_container_width=True,
                      type="primary" if st.session_state.page == "dashboard" else "secondary"):
@@ -255,12 +275,3 @@ else:
     else:
         # Default to home if page not found
         show_home(current_user)
-
-    # This is just for now — should be fetched from user-property relationships later
-    user_properties = ["BOKOH", "CLELW", "CLEMF"]
-
-    if "selected_property" not in st.session_state:
-        st.session_state.selected_property = user_properties[0]
-
-    selected_property = st.selectbox("Select Property", user_properties)
-    st.session_state.selected_property = selected_property

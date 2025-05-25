@@ -10,11 +10,16 @@ def show_room_status():
     st.header("Room Status Management")
     
     # Load data
-    hotel_data.load_data()
-    room_data = hotel_data.get_room_status_data()
+    if hasattr(hotel_data, 'get_room_status_data'):
+        room_data = pd.DataFrame(hotel_data.get_room_status_data())
+    else:
+        st.error("Room status data function is missing from DataHandler. Please contact support.")
+        room_data = pd.DataFrame([])
 
-    if room_data is None or room_data.empty:
-        st.warning("No data available.")
+    # Standardized empty state handling
+    if room_data is None or (hasattr(room_data, 'empty') and room_data.empty):
+        st.warning("No room status data available for the selected period.")
+        st.info("Once your property is connected to HotelKey, room status metrics and trends will appear here.")
         return
     
     # Top summary metrics

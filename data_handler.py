@@ -9,6 +9,39 @@ class DataHandler:
         """Initialize the data handler"""
         # We'll use Supabase client directly instead of db_manager
         pass
+    
+    def get_checkin_checkout_today(self):
+        """Get today's check-ins and check-outs"""
+        try:
+            supabase = get_supabase_client()
+            today = datetime.now().date().isoformat()
+            # Fetch check-ins
+            checkins_response = supabase.from_('bookings').select('*,guest:profiles(*),room:rooms(*)').eq('check_in_date', today).execute()
+            checkins = checkins_response.data if checkins_response and hasattr(checkins_response, 'data') else []
+            # Fetch check-outs
+            checkouts_response = supabase.from_('bookings').select('*,guest:profiles(*),room:rooms(*)').eq('check_out_date', today).execute()
+            checkouts = checkouts_response.data if checkouts_response and hasattr(checkouts_response, 'data') else []
+            return checkins, checkouts
+        except Exception as e:
+            print(f"Error getting today's check-ins/check-outs: {str(e)}")
+            return [], []
+    
+    def get_room_status_data(self):
+        """Get all room status data"""
+        try:
+            supabase = get_supabase_client()
+            response = supabase.from_('room_status').select('*').execute()
+            return response.data if response and hasattr(response, 'data') else []
+        except Exception as e:
+            print(f"Error getting room status data: {str(e)}")
+            return []
+
+    """Class to handle data operations for the hotel dashboard"""
+    
+    def __init__(self):
+        """Initialize the data handler"""
+        # We'll use Supabase client directly instead of db_manager
+        pass
         
     def get_occupancy_data(self, start_date, end_date):
         """Get occupancy data for the given date range"""
