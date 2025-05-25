@@ -117,49 +117,64 @@ def get_headers():
         headers.append(session_info.ws.request.headers)
 
 def restore_supabase_session_from_cookie():
-    import base64, json, time
-    cookie_manager = get_manager()
+    cookie_manager = stx.CookieManager() # Use stx.CookieManager()
     cookies = cookie_manager.get_all()
     token = None
-    for key in cookies:
-        if key.startswith('sb-') and key.endswith('-auth-token'):
-            token = cookies[key]
+    # Try to find the access token first
+    for key, value in cookies.items():
+        if key.startswith('sb-') and key.endswith('-auth-token'): # Standard Supabase cookie name pattern
+            token = value
             break
+
     if token:
         try:
-            # JWT format: header.payload.signature
-            payload_b64 = token.split('.')[1]
-            padding = '=' * (4 - (len(payload_b64) % 4)) if len(payload_b64) % 4 else ''
-            payload_b64 += padding
-            payload_json = base64.urlsafe_b64decode(payload_b64)
-            payload = json.loads(payload_json)
-            email = payload.get('email')
-            exp = payload.get('exp')  # expiry timestamp (seconds since epoch)
-            now = int(time.time())
-            if exp and now < exp:
-                # Session is still valid
-                st.session_state['email'] = email
-                # Simulate a minimal supabase_user object for session restoration
-                st.session_state['supabase_user'] = type('User', (), {})()
-                st.session_state['supabase_user'].id = payload.get('sub', '')
-                st.session_state['supabase_user'].email = email
-                # Optionally: st.session_state['supabase_access_token'] = token
+            supabase = get_supabase_client()
+            response = supabase.auth.get_user(token) # Validate token and get user
+            if response and response.user:
+                st.session_state.supabase_user = response.user
+                st.session_state.supabase_access_token = token # Store the token that was validated
+                st.session_state.email = response.user.email
+
+                # Attempt to get full session details including refresh token and expiry
+                # This might be optimistic as get_user(token) primarily validates the access token.
+                # A full session might require re-authentication or a separate cookie for refresh token.
+                session = supabase.auth.get_session()
+                if session and session.refresh_token and session.expires_at:
+                    st.session_state.supabase_refresh_token = session.refresh_token
+                    st.session_state.supabase_expires_at = session.expires_at
+                else:
+                    # If full session details aren't available, clear potentially stale ones
+                    # or rely on what might already be in other cookies if handled elsewhere.
+                    # For now, we'll clear them if not directly part of the get_user or subsequent get_session response.
+                    st.session_state.pop('supabase_refresh_token', None)
+                    st.session_state.pop('supabase_expires_at', None)
                 return True
             else:
-                # Token expired - clear session
+                # Token was invalid or user could not be fetched
                 st.session_state.pop('supabase_user', None)
                 st.session_state.pop('email', None)
+                st.session_state.pop('supabase_access_token', None)
+                st.session_state.pop('supabase_refresh_token', None)
+                st.session_state.pop('supabase_expires_at', None)
+                print("Failed to restore session: No user from token.")
                 return False
         except Exception as e:
-            print(f"Error decoding/restoring Supabase session from JWT: {e}")
+            # Handle any exception during Supabase client call
+            print(f"Error restoring Supabase session from cookie: {e}")
             st.session_state.pop('supabase_user', None)
             st.session_state.pop('email', None)
+            st.session_state.pop('supabase_access_token', None)
+            st.session_state.pop('supabase_refresh_token', None)
+            st.session_state.pop('supabase_expires_at', None)
             return False
     return False
 
 def get_email_from_cookies():
     # For backward compatibility, call the new restore logic
+    # This function will now use the updated restore_supabase_session_from_cookie
     restore_supabase_session_from_cookie()
+    # It might be better to return the email if found, or None
+    # return st.session_state.get('email') # Optional: make it return the email
 
 
 get_email_from_cookies()
