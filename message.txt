@@ -1,0 +1,44 @@
+BLAW	Proctorio Orientation	1-Jun	TRUE	26-May	NS				
+	BLAW	Course Logistics Quiz	1-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 1 Homework	1-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 1 ABA - Business Ethics	1-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 2 Homework	1-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 2 ABA - Constitutional Law	1-Jun	TRUE	26-May	NS				
+	BLAW	Discussion: Biography	8-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 3 Homework	8-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 4 Homework	8-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 4 ABA - Alternative Dispute Resolution	8-Jun	TRUE	26-May	NS				
+	BLAW	Exam 1 (Ch. 1, 2, 3, 4)	8-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 6 Homework	15-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 7 Homework	15-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 6 ABA - Negligence: Duty and Breach	15-Jun	TRUE	26-May	NS				
+	BLAW	Chapter 8 Homework	22-Jun	FALSE	2-Jun	NS				
+	BLAW	Chapter 10 Homework	22-Jun	FALSE	2-Jun	NS				
+	BLAW	Chaprt 8-10 ABA - Contracts: Assent and Legality	22-Jun	FALSE	2-Jun	NS				
+	BLAW	You Be the Judge - Verbal Agreement: Rec Studio	22-Jun	FALSE	2-Jun	NS				
+	BLAW	Exam 2 (Ch. 6, 7, 8, 10)	22-Jun	FALSE	2-Jun	NS				
+	BLAW	Chapter 13 Homework	29-Jun	FALSE	9-Jun	NS				
+	BLAW	Chapter 13 ABA - Contracts: Acceptance	29-Jun	FALSE	9-Jun	NS				
+	BLAW	Chapter 15 Homework	29-Jun	FALSE	9-Jun	NS				
+	BLAW	Chapter 21 Homework	6-Jul	FALSE	16-Jun	NS				
+	BLAW	Chapter 22 Homework	6-Jul	FALSE	16-Jun	NS				
+	BLAW	You Be the Judge - Agency: Duped by Duplication	6-Jul	FALSE	16-Jun	NS				
+	BLAW	Exam 3 (Ch. 13, 15, 21, 22)	6-Jul	FALSE	16-Jun	NS				
+	BLAW	Chapter 23 Homework	13-Jul	FALSE	23-Jun	NS				
+	BLAW	Chapter 23 ABA - Employment Law: Discrimination	13-Jul	FALSE	23-Jun	NS				
+	BLAW	Chapter 25 Homework	13-Jul	FALSE	23-Jun	NS				
+	BLAW	Chapter 26 & 27 [Section 1 + 2] Homework	20-Jul	FALSE	30-Jun	NS				
+	BLAW	Chapter 27 ABA - Partnership and Corporate Law	20-Jul	FALSE	30-Jun	NS				
+	BLAW	You Be the Judge - Partnership Dissolution	20-Jul	FALSE	30-Jun	NS				
+	BLAW	Chapter 29 & 30 Homework	27-Jul	FALSE	7-Jul	NS
+	BLAW	Chapter 30 ABA - Property Law: Landlord/Tenant	27-Jul	FALSE	7-Jul	NS
+	BLAW	Exam 4 (Ch. 23, 25, 26, 27, 29, 30)	3-Aug	FALSE	14-Jul
+	BLAW	Extra Credit Survey		FALSE		NS
+	BUSN	Chapter 2 Assignment	2-Jun	TRUE	27-May	NS				
+	BUSN	Chapter 6 Assignment	16-Jun	TRUE	27-May	NS				
+	BUSN	Chapter 8 Assignment	23-Jun	TRUE	27-May	NS				
+	BUSN	Exam 1 (Ch. 1 to 9)	25-Jun	TRUE	27-May	NS				
+	BUSN	DegreeWorks Assignment	7-Jul	TRUE	27-May
+	BUSN	Career Services Assignment	23-Jul	TRUE	27-May
+	BUSN	Group Presentations	28-Jul	TRUE	27-May
+	BUSN	Final Exam (Ch. 10 to 19)	30-Jul	TRUE	27-May
