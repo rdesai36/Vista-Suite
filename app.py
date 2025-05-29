@@ -106,7 +106,7 @@ else:
     full_name = (first_name + " " + last_name).strip()
     sidebar_name = (first_name + " " + (last_name[:1] + ".") if last_name else "").strip() or current_user.get("name", "")
 
-    # Update user's last active timestamp (don't fail hard if it breaks)
+    # Update user's last active timestamp
     try:
         supabase.from_('profiles').update({'last_active': datetime.now().isoformat()}).eq('id', user_id).execute()
     except Exception as e:

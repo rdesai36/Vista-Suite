@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import datetime
 from auth import sign_in, sign_up
 from supabase_client import get_supabase_client
 
@@ -18,7 +19,7 @@ def show_login():
 
         if st.button("Login", key="login_button"):
             if email and password:
-                user = sign_in(email, password)
+                user = sign_in(email, password, None)  # No user_data on normal login
                 if user:
                     st.session_state["supabase_user"] = user  # use consistent session key
                     st.session_state["page"] = "home"
@@ -38,30 +39,30 @@ def show_login():
         confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
 
         if st.button("Sign Up", key="signup_button"):
-            if not all([first_name, last_name, email, phone, password, confirm_password]):
-                st.warning("Please fill in all fields.")
+            # Validate all required fields for profiles table
+            missing_fields = []
+            if not first_name:
+                missing_fields.append("First Name")
+            if not last_name:
+                missing_fields.append("Last Name")
+            if not email:
+                missing_fields.append("Email")
+            if not phone:
+                missing_fields.append("Phone Number")
+            if not password:
+                missing_fields.append("Password")
+            if not confirm_password:
+                missing_fields.append("Confirm Password")
+            if missing_fields:
+                st.warning(f"Please fill in all required fields: {', '.join(missing_fields)}.")
             elif password != confirm_password:
                 st.error("Passwords do not match.")
             else:
                 user_data = {"first_name": first_name, "last_name": last_name, "phone": phone}
                 user = sign_up(email, password, user_data)
                 if user:
-                    supabase = get_supabase_client()
-                    # Prevent duplicate profiles by checking if one already exists
-                    existing = supabase.from_("profiles").select("id").eq("id", user.id).execute()
-                    if not (existing.data and len(existing.data) > 0):
-                        profile_data = {
-                            "id": user.id,
-                            "first_name": first_name,
-                            "last_name": last_name,
-                            "phone": phone,
-                            "email": email,
-                            "role": "Front Desk",  # Default
-                            "created_at": datetime.now().isoformat()
-                        }
-                        supabase.from_("profiles").insert(profile_data).execute()
-                    st.success("Account created successfully! Please log in.")
-                    st.session_state["page"] = "login"
-                    st.rerun()
+                    # Store user_data in session for use on first login
+                    st.session_state["pending_profile_data"] = user_data
+                    st.success("Account created! Please check your email and verify your email address before logging in.")
                 else:
                     st.error("Failed to create account. Please try again.")
