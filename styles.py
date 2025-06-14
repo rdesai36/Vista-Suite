@@ -269,26 +269,6 @@ def render_card(content, padding="1.5rem", margin="0 0 1rem 0"):
     </div>
     """
 
-def apply_mobile_styles():
-    """Apply responsive styles for mobile devices"""
-    # Detect if viewport is narrow (mobile)
-    is_mobile = """
-    <script>
-        if (window.innerWidth < 768) {
-            document.body.classList.add('mobile');
-        } else {
-            document.body.classList.remove('mobile');
-        }
-        
-        window.addEventListener('resize', function() {
-            if (window.innerWidth < 768) {
-                document.body.classList.add('mobile');
-            } else {
-                document.body.classList.remove('mobile');
-            }
-        });
-    </script>
-    """
     
     st.markdown(is_mobile, unsafe_allow_html=True)
     
@@ -320,16 +300,6 @@ def apply_mobile_styles():
     """
     
     st.markdown(mobile_styles, unsafe_allow_html=True)
-
-def render_mobile_nav(active_page):
-    """Render bottom navigation bar for mobile"""
-    pages = [
-        {"name": "Home", "icon": "🏠", "page_id": "home"},
-        {"name": "Logs", "icon": "📝", "page_id": "logs"},
-        {"name": "Messages", "icon": "💬", "page_id": "messaging"},
-        {"name": "Profile", "icon": "👤", "page_id": "profile"},
-        {"name": "Team", "icon": "👥", "page_id": "team"}
-    ]
     
     # Create a component to handle navigation
     component_id = "mobile_nav_component"

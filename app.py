@@ -2,7 +2,6 @@ import streamlit as st
 from components.dashboard import show_dashboard
 from components.reports import show_reports
 from datetime import datetime, timedelta
-from styles import load_theme_settings, apply_theme, apply_mobile_styles, render_mobile_nav
 from components.home import show_home
 from components.front_office import show_front_office
 from components.occupancy import show_occupancy
@@ -15,6 +14,7 @@ from components.room_status import show_room_status
 from components.profile import show_profile
 from components.team import show_team
 from components.login import show_login
+#000from components.inventory import show_inventory
 from supabase_client import get_supabase_client
 from auth import require_auth
 
@@ -27,9 +27,6 @@ st.set_page_config(
 )
 
 # Apply custom theme and styles
-load_theme_settings()
-apply_theme()
-apply_mobile_styles()
 
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -111,18 +108,6 @@ else:
         supabase.from_('profiles').update({'last_active': datetime.now().isoformat()}).eq('id', user_id).execute()
     except Exception as e:
         st.warning(f"Could not update last active timestamp: {str(e)}")
-
-    # Handle mobile navigation (receives message from JavaScript)
-    if 'mobile_nav' in st.session_state:
-        try:
-            import json
-            nav_data = json.loads(st.session_state.mobile_nav)
-            if 'page' in nav_data:
-                st.session_state.page = nav_data['page']
-                # Clear the message to prevent loops
-                del st.session_state.mobile_nav
-        except:
-            pass
 
     # Sidebar for navigation and filters
     with st.sidebar:
@@ -238,9 +223,6 @@ else:
             st.session_state.page = "settings"
             st.rerun()
 
-    # Render mobile navigation bar
-    render_mobile_nav(st.session_state.page)
-
     # Display the selected page
     if st.session_state.page == "home":
         show_home(current_user)
@@ -272,6 +254,10 @@ else:
         show_room_status()
     elif st.session_state.page == "reports":
         show_reports(st.session_state.start_date, st.session_state.end_date)
+    elif st.session_state.page == "login":
+        show_login()
+    elif st.session_state.page == "inventory":
+        show_inventory()
     else:
         # Default to home if page not found
         show_home(current_user)
